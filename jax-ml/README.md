@@ -1,0 +1,6 @@
+- [Actor Critic](./actor-critic.html)
+- [Linear Regression](./linear-regression.html)
+- [Logistic Regression](./logistic-regression.html)
+- [MNIST ANN](./mnist-ann.html)
+- [MNIST CNN](./mnist-cnn.html)
+- [Softmax Regression](./softmax-regression.html)
