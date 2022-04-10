@@ -1,0 +1,9 @@
+__pycache__
+.ipynb_checkpoints
+.env
+.idea
+.vscode
+_data
+*.egg-info
+node_modules
+dist

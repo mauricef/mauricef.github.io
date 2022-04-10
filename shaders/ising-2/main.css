@@ -1,0 +1,87 @@
+/** https://jgthms.com/web-design-in-4-minutes **/
+
+
+html {
+    position: relative;
+    min-height: 100%;
+}
+body {
+    background-color: white;
+    overflow: hidden;
+    margin: 0px;
+    border: 0;
+}
+canvas {
+    /* width: 512px;
+    height: 512px; */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    width: 100%;
+    height: 100vh;
+    z-index: 100;
+    image-rendering: pixelated;   /* for everything else */
+}
+
+main {
+  margin: 0 auto;
+  max-width: 50em;
+  font-family: "Helvetica", "Arial", sans-serif;
+  line-height: 1.5;
+  padding: 1em 1em;
+}
+
+h2 {
+  margin-top: 1em;
+  padding-top: 1em;
+}
+
+body {
+  color: #555;
+}
+
+h1,
+h2,
+strong {
+  color: #333;
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: xx-large;
+  border-bottom: 1px solid #333;
+}
+
+nav ul {
+  display: flex;
+  align-items: center;
+  list-style: none;
+}
+
+nav li {
+  margin-left: 20px;
+}
+
+nav a {
+  text-decoration: none;
+}
+
+blockquote {
+  border-left: 10px solid #333;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+  quotes: "\201C""\201D""\2018""\2019";
+}
+
+blockquote:before {
+  content: open-quote;
+  font-size: 4em;
+  line-height: 0.1em;
+  margin-right: 0.25em;
+  vertical-align: -0.4em;
+}
+blockquote p {
+  display: inline;
+}

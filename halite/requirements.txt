@@ -1,0 +1,9 @@
+dm-haiku
+jax
+jaxlib
+jupyterlab
+jupyterlab-git
+kaggle-environments
+matplotlib
+optax
+seaborn

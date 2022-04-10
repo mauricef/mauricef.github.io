@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="twgl.min.js"></script>
+  <script type="module" src="./ca.js"></script>
+  <script type="module" src="./demo.js"></script>
+  <style>
+    canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="demo-canvas" width="768" height="768"></canvas>
+<script type="module">
+    import { createDemo } from './demo.js'
+    createDemo();
+</script>
+
+
+</body>

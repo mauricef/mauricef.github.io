@@ -1,0 +1,11 @@
+{
+	"graph": {
+		"mandelbrot": {
+			"inputs": {
+                "u_zoomCenter": [-0.75, 0.15],
+                "u_zoomSize": [0.25, 0.25]
+            }
+		}
+	},
+	"root": "mandelbrot"
+}

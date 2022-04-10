@@ -1,0 +1,13 @@
+{
+	"title": "GOL Burn",
+	"date": "August 16th, 2020",
+	"graph": {
+		"gol": {
+			"inputs": {}
+		},
+		"burn": {
+			"inputs": { "u_mix": [0.95, 0.1, 0.5], "u_input": "gol"}
+		}
+	},
+	"root": "burn"
+}

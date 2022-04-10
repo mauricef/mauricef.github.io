@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Small Things | Circle</title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <style type="text/css">
+          rect 
+          {
+            fill: white;
+            stroke: grey;
+            stroke-width: 1;
+          }
+
+          circle
+          {
+            cursor: pointer;
+            stroke: grey;
+            stroke-width: .5;
+            fill: lightblue;
+            filter: url(#shadow);
+          }
+        </style>
+    </head>
+    <body>
+        <svg viewbox="0 0 100 100">
+            <defs>
+              <filter id="shadow">
+                <feDropShadow dx=".5" dy=".5" stdDeviation=".5"/>
+              </filter>
+            </defs>
+            <g>
+              <rect></rect>
+              <circle></circle>
+            </g>
+        </svg>
+    </body>
+    <script type="text/javascript">
+      const width = 100
+      const height = 100
+      const circleRadius = 10
+
+      const drag = (function() {
+        const xLims = [circleRadius, width - circleRadius]
+        const xScale = d3.scaleLinear().domain(xLims).range(xLims).clamp(true)
+        const yLims = [circleRadius, height - circleRadius]
+        const yScale = d3.scaleLinear().domain(yLims).range(yLims).clamp(true)
+
+        function dragstarted(d) {
+          d3.select(this).classed("drag", true);
+        }
+
+        function dragged(d) {
+          d3
+            .select(this)
+            .classed("drag", true)
+            .attr("cx", d => d.x = xScale(d3.event.x))
+            .attr("cy", d => d.y = yScale(d3.event.y))
+        }
+
+        function dragended(d) {
+          d3.select(this).classed("drag", false);
+        }
+
+        return d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended);
+      })();
+
+      d3
+        .select("svg")
+
+      d3
+        .select("circle")
+        .datum({x: width/2, y: width/2})
+        .attr("r", circleRadius)
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .call(drag)
+
+      d3.select("rect")
+        .attr("width", width)
+        .attr("height", height)
+    </script>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+	<head>
+        <meta charset="utf-8"> 
+        <meta name="viewport" 
+            content="width = device-width, initial-scale = 1.0, minimum-scale = 1, maximum-scale = 1, user-scalable = no" />
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+		<style>
+			body { margin: 0; height:100vh; }
+			canvas { width: 100%; height: 100%; display: block; }
+		</style>
+	</head>
+	<body>
+		<script id="vertexShader" type="x-shader/x-vertex">
+			void main()	{
+				gl_Position = vec4(position, 1.0);
+			}
+		</script>
+
+		<script id="fragmentShader" type="x-shader/x-fragment">
+			void main()	{
+				vec2 xy = mod(floor(gl_FragCoord.xy / 50.), 2.);
+				float value = mod(xy.x + xy.y, 2.);
+				gl_FragColor = vec4(vec3(value), 1.);
+			}
+		</script>
+
+		<canvas id="c"></canvas>
+		<script type="module">
+			import * as THREE from "./three.module.js"
+
+			const canvas = document.querySelector("#c")
+			const renderer = new THREE.WebGLRenderer({canvas})
+			renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)
+
+			const scene = new THREE.Scene()
+			const camera = new THREE.Camera()
+			const geometry = new THREE.BufferGeometry()
+			const vertices = new Float32Array([
+				-1.0, -1.0, 0,
+				1.0, -1.0,  0,
+				1.0,  1.0,  0,
+
+				1.0,  1.0,  0,
+				-1.0,  1.0,  0,
+				-1.0, -1.0,  0
+			])
+			geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+			const material = new THREE.ShaderMaterial({
+				vertexShader: document.getElementById('vertexShader').textContent,
+				fragmentShader: document.getElementById('fragmentShader').textContent
+			})
+			//const material = new THREE.MeshBasicMaterial({color: "blue"})
+			const plane = new THREE.Mesh(geometry, material)
+			scene.add(plane)
+		
+			function animate(time) {
+				renderer.render(scene, camera)
+				requestAnimationFrame(animate)
+			}
+			animate()
+
+		</script>
+	</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Small Things | Grid Zoom </title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script src="https://d3js.org/d3-random.v2.min.js"></script>
+        <style type="text/css">
+          rect
+          {
+            fill: white;
+            stroke: lightblue;
+            stroke-width: 1;
+          }
+        </style>
+    </head>
+    <body>
+      <div id="root"></div>
+    </body>
+    <script type="text/javascript">
+      const [width, height] = [100, 100]
+      function getData(i) {
+          return {
+          x: i % 10 * 10,
+          y: Math.floor(i/10) * 10,
+          width: 10,
+          height: 10
+        }
+      }
+      
+      function buildGrid(root) {
+        const data = d3
+          .range(100)
+          .map(getData)
+
+        const svg = root
+          .append("svg")
+          .attr('viewBox', [0, 0, width, height])
+
+        svg
+          .selectAll("rect")
+          .data(data)
+          .join("rect")
+            .attr("x", d => d.x)
+            .attr("y", d => d.y)
+            .attr("width", d => d.width)
+            .attr("height", d => d.width)
+        return svg
+      }
+      const root = d3.select("#root")
+      function zoom(outerSvg) {
+        var outerRects = outerSvg.selectAll("rect")
+        var data = getData(d3.randomInt(100)())
+        var innerSvg = buildGrid(outerSvg)
+        innerSvg
+          .datum(data)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("width", d => d.width)
+          .attr("height", d => d.height)
+
+        outerSvg
+          .transition()
+          .duration(5000)
+          .attr("viewBox", [data.x, data.y, data.width, data.height])
+          .on("end", () => {
+            innerSvg.attr("width", null).attr("height", null)
+            root.append(() => innerSvg.node())
+            outerSvg.remove()
+            zoom(innerSvg)
+          })
+      }
+      zoom(buildGrid(root))
+      
+  </script>
+</html>
