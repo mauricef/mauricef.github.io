@@ -1,0 +1,3 @@
+- [Jacks Car Rental](./04-jacks-car-rental.html)
+- [Black Jack](./05-black-jack.html)
+- [Windy City Grid World](./06-windy-city-grid-world.html)
