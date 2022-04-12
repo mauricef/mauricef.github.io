@@ -19,7 +19,7 @@ export class Mouse {
             this.inGesture = true
             this.updatePointerPos(e)
             this.drawPointer = false
-            this.dragPixel = this.getPixelPos()
+            this.dragPixel = this.pixelPos
             this.dragInitialZoomOffset = this.zoomOffset
             this.dragInitialZoomScale = this.zoomScale
         }
@@ -54,7 +54,7 @@ export class Mouse {
         canvas.onmousedown = (e) => {
             if (e.buttons & 2) {
                 e.preventDefault()
-                this.dragPixel = this.getPixelPos()
+                this.dragPixel = this.pixelPos
                 this.dragInitialZoomOffset = this.zoomOffset
             }
             else if (e.buttons & 1) {
@@ -101,7 +101,7 @@ export class Mouse {
             this.canvas.height * this.zoomScale
         ]
     }
-    getPixelPos() {
+    get pixelPos() {
         var x = this.pointerPos.x, y = this.pointerPos.y
         x *= this.canvas.width / this.zoomScale
         y *= this.canvas.height / this.zoomScale
@@ -119,13 +119,13 @@ export class Mouse {
         newZoomScale = Math.max(1, newZoomScale)
         newZoomScale = Math.min(512, newZoomScale)
         const scaleFactor = newZoomScale / this.zoomScale
-        var pixelPos = this.getPixelPos()
+        var pixelPos = this.pixelPos
         pixelPos = {
             x: pixelPos.x + this.zoomOffset.x, 
             y: pixelPos.y + this.zoomOffset.y
         }
         this.zoomScale = newZoomScale
-        var newPixelPos = this.getPixelPos()
+        var newPixelPos = this.pixelPos
         this.zoomOffset = {
             x: pixelPos.x - newPixelPos.x, 
             y: pixelPos.y - newPixelPos.y
@@ -133,7 +133,7 @@ export class Mouse {
     }
     updatePan() {
         if (this.dragPixel != null) {
-            const currentPixel = this.getPixelPos()
+            const currentPixel = this.pixelPos
             const dragOffset = {
                 x: this.dragPixel.x - currentPixel.x,
                 y: this.dragPixel.y - currentPixel.y,
