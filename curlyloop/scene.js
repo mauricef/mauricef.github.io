@@ -61,27 +61,7 @@ export class Scene {
             gl_Position = position;
         }
     `
-    constructor(canvas) {
-        this.canvas = canvas
-        const MAX_TEXTURE_SIZE = 1024
-        {
-            var width = canvas.clientWidth
-            var height = canvas.clientHeight
-            const ratio = width / height
-            if (width > MAX_TEXTURE_SIZE && ratio > 1) {
-                width = MAX_TEXTURE_SIZE
-                height = Math.floor(width / ratio)
-            }
-            else if (height > MAX_TEXTURE_SIZE) {
-                height = MAX_TEXTURE_SIZE
-                width = Math.floor(height * ratio)
-            }
-        }
-        canvas.width = width
-        canvas.height = height 
-
-        const gl = canvas.getContext("webgl2") 
-        gl.viewport(0, 0, width, height)
+    constructor(gl) {
         this.gl = gl
         this.quad = twgl.createBufferInfoFromArrays(gl, {
             position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]

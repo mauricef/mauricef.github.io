@@ -84,6 +84,11 @@ function modulo(a, n) {
     return ((a % n ) + n ) % n
 }
 
+const u_seeds = [
+    Math.random(),
+    Math.random(),
+    Math.random()
+]
 function createScene(fs, gl, resolution, shaders) {
     var buffers = [shaders.createBuffer(), shaders.createBuffer()]
     const pg = shaders.createProgram(fs)
@@ -95,11 +100,7 @@ function createScene(fs, gl, resolution, shaders) {
             u_pointer: pointerPos,
             u_prev: buffers[0],
             u_seed: Math.random(),
-            u_seeds: [
-                Math.random(),
-                Math.random(),
-                Math.random()
-            ],
+            u_seeds: u_seeds,
             u_resolution: resolution,
         }, buffers[1])
         first = false

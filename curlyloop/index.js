@@ -1,18 +1,34 @@
-import {Scene} from '../scene.js'
+import {Scene} from './scene.js'
+import {Mouse} from './mouse.js'
 
+// const renderFs = /*glsl*/`
+//     #version 300 es
+//     precision highp float;
+
+//     in vec2 uv;
+//     uniform sampler2D u_input;
+//     out vec4 color;
+
+//     void main() {
+//         color = texture(u_input, uv);
+//     }
+// `
 const renderFs = /*glsl*/`
     #version 300 es
     precision highp float;
 
-    in vec2 uv;
     uniform sampler2D u_input;
+    uniform vec2 offset;
+    uniform vec2 scale;
     out vec4 color;
 
     void main() {
+        vec2 xy = gl_FragCoord.xy;
+        vec2 uv = xy / scale + offset;
         color = texture(u_input, uv);
     }
 `
-
+    
 const randomFs = /*glsl*/`
     #version 300 es
     precision highp float;
@@ -88,7 +104,27 @@ function animate(f) {
 }
 
 const canvas = document.getElementById('c')
-const scene = new Scene(canvas)
+const MAX_TEXTURE_SIZE = 1024
+{
+    var width = canvas.clientWidth
+    var height = canvas.clientHeight
+    const ratio = width / height
+    if (width > MAX_TEXTURE_SIZE && ratio > 1) {
+        width = MAX_TEXTURE_SIZE
+        height = Math.floor(width / ratio)
+    }
+    else if (height > MAX_TEXTURE_SIZE) {
+        height = MAX_TEXTURE_SIZE
+        width = Math.floor(height * ratio)
+    }
+}
+canvas.width = width
+canvas.height = height 
+const mouse = new Mouse(canvas)
+
+const gl = canvas.getContext("webgl2") 
+gl.viewport(0, 0, width, height)
+const scene = new Scene(gl)
 const renderProgram = scene.program(renderFs)
 const randomProgram = scene.program(randomFs)
 const golProgram = scene.program(golFs)
@@ -103,6 +139,28 @@ function render(time) {
         u_prev: buffer,
         u_resolution: [canvas.width, canvas.height],
     }, buffer)
-    renderProgram.execute({u_input: buffer})
+    renderProgram.execute({
+        u_input: buffer,
+        offset: mouse.offset,
+        scale: mouse.scale
+    })
 }
 animate(render)
+
+
+// render(buffer) {
+//         const scale = [
+//             this.resolution.width * this.zoomScale,
+//             this.resolution.height * this.zoomScale
+//         ]
+//         const offset = [
+//             this.zoomOffset.x / this.resolution.width,
+//             this.zoomOffset.y / this.resolution.height
+//         ]
+//         this.zoomPg({
+//             u_input: buffer,
+//             offset: offset,
+//             scale: scale,
+//         }, this.zoomBuffer)
+//         this.shaders.render(this.zoomBuffer)
+//     }
