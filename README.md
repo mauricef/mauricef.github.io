@@ -1,3 +1,4 @@
 - [Shaders](./shaders)
 - [RL Book](./rl-book)
 - [Jax](./jax-ml)
+- [Curly Loop](./curlyloop)

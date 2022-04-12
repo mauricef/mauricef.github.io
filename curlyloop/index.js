@@ -1,22 +1,26 @@
-import {Scene} from './scene.js'
+import {Scene} from '../scene.js'
 
 const renderFs = /*glsl*/`
+    #version 300 es
     precision highp float;
 
-    varying vec2 uv;
+    in vec2 uv;
     uniform sampler2D u_input;
+    out vec4 color;
 
     void main() {
-        gl_FragColor = texture2D(u_input, uv);
+        color = texture(u_input, uv);
     }
 `
 
 const randomFs = /*glsl*/`
+    #version 300 es
     precision highp float;
 
-    varying vec2 uv;
+    in vec2 uv;
     uniform float u_seed;
-
+    out vec4 color;
+    
     float random(float seed, float p, vec2 xy) {
         vec2 v = vec2(12.9898, 78.233);
         float s = 43758.5453123 + 1234.56789 * seed;
@@ -29,29 +33,31 @@ const randomFs = /*glsl*/`
         float p = .5;
         vec2 xy = gl_FragCoord.xy;
         float value = random(u_seed, p, xy);
-        gl_FragColor = vec4(vec3(value), 1.);
+        color = vec4(vec3(value), 1.);
     }
 `
 
 const golFs = /*glsl*/`
+    #version 300 es
     precision highp float;
 
-    varying vec2 uv;
+    in vec2 uv;
     uniform vec2 u_resolution;
     uniform sampler2D u_prev;
-
-    vec4 sample(sampler2D sampler, vec2 uv, float dx, float dy) {
+    out vec4 color;
+        
+    vec4 sample_texture(sampler2D sampler, vec2 uv, float dx, float dy) {
         vec2 pixelSize = 1. / u_resolution;
         vec2 position = mod(uv + pixelSize * vec2(dx, dy), 1.);
-        return texture2D(sampler, position);
+        return texture(sampler, position);
     }
 
     float gol(sampler2D state, vec2 uv) {
-        float value = sample(state, uv, 0., 0.).r;
+        float value = sample_texture(state, uv, 0., 0.).r;
         float sum = 0.0;
         for (float dx=-1.;dx<=1.;dx++) {
             for (float dy=-1.;dy<=1.;dy++) {
-                sum += sample(state, uv, dx, dy).r;
+                sum += sample_texture(state, uv, dx, dy).r;
             }
         }
         if(value == 1.0 && (sum < 2.0 || sum > 3.0)){
@@ -69,7 +75,7 @@ const golFs = /*glsl*/`
         float p = .5;
         vec2 xy = gl_FragCoord.xy;
         float value = gol(u_prev, uv);
-        gl_FragColor = vec4(vec3(value), 1.);
+        color = vec4(vec3(value), 1.);
     }
 `
 

@@ -51,8 +51,10 @@ class Program {
 
 export class Scene {
     VS = /*glsl*/`
-        attribute vec4 position;
-        varying vec2 uv;
+        #version 300 es
+
+        in vec4 position;
+        out vec2 uv;
 
         void main() {
             uv = position.xy * .5 + .5;

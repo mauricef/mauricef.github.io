@@ -17,4 +17,3 @@
 - [Ranbow Time](./rainbow-time)
 - [Random BW](./random-bw)
 - [Random Color](./random-color)
-- [GOL TWGL](./gol-twgl)
