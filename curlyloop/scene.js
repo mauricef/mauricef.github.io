@@ -6,21 +6,6 @@ class Buffer {
     }
 }
 
-class DoubleBuffer {
-    constructor(gl) {
-        this.buffers = [new Buffer(gl), new Buffer(gl)]
-    }
-    get read() {
-        return this.buffers[0]
-    }
-    get write() {
-        return this.buffers[1]
-    }
-    swap() {
-        this.buffers.reverse()
-    }
-}
-
 class Program {
     constructor(gl, quad, vs, fs) {
         this.gl = gl
@@ -31,13 +16,12 @@ class Program {
         const {gl, quad, pg} = this
         Object.keys(uniforms).forEach(key => {
                 const value = uniforms[key]
-                if (value instanceof DoubleBuffer) {
-                    uniforms[key] = value.read.tex
+                if (value instanceof Buffer) {
+                    uniforms[key] = value.tex
                 }
             })
         if (outputBuffer) {
-            twgl.bindFramebufferInfo(gl, outputBuffer.write.fbi)
-            outputBuffer.swap()
+            twgl.bindFramebufferInfo(gl, outputBuffer.fbi)
         }
         else {
             twgl.bindFramebufferInfo(gl, null)
@@ -71,6 +55,6 @@ export class Scene {
         return new Program(this.gl, this.quad, this.VS, fs)
     }
     buffer() {
-        return new DoubleBuffer(this.gl)
+        return new Buffer(this.gl)
     }
 }

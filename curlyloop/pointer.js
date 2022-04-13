@@ -1,5 +1,9 @@
+function modulo(a, n) {
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Remainder
+    return ((a % n ) + n ) % n
+}
 
-export class Mouse {
+export class Pointer {
     constructor(canvas) {
         this.drawPointer = false
         this.inGesture = false
@@ -89,23 +93,44 @@ export class Mouse {
             this.drawPointer = false
         }
     }
+    get width() {
+        return this.canvas.width
+    }
+    get height() {
+        return this.canvas.height
+    }
     get offset() {
         return [
-            this.zoomOffset.x / this.canvas.width,
-            this.zoomOffset.y / this.canvas.height
+            this.zoomOffset.x / this.width,
+            this.zoomOffset.y / this.height
         ]
     }
     get scale() {
         return [
-            this.canvas.width * this.zoomScale,
-            this.canvas.height * this.zoomScale
+            this.width * this.zoomScale,
+            this.height * this.zoomScale
         ]
     }
     get pixelPos() {
         var x = this.pointerPos.x, y = this.pointerPos.y
-        x *= this.canvas.width / this.zoomScale
-        y *= this.canvas.height / this.zoomScale
+        x *= this.width / this.zoomScale
+        y *= this.height / this.zoomScale
         return {x, y}
+    }
+    get position() {
+        if (this.drawPointer) {
+            var [x, y] = this.drawPointer ? [this.pointerPos.x, this.pointerPos.y] : [0, 0]
+            x *= this.width / this.zoomScale
+            y *= this.height / this.zoomScale
+            x += this.zoomOffset.x
+            y += this.zoomOffset.y
+            x = modulo(x, this.width)
+            y = modulo(y, this.height)
+            return [x, y]
+        }
+        else {
+            return [0, 0]
+        }
     }
     updatePointerPos(e) {
         const r = this.canvas.getBoundingClientRect()
