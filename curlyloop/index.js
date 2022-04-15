@@ -1,4 +1,4 @@
-import {init} from './app/gol/index.js'
+const APP = 'ship'
 
 function animate(f) {
     function innerAnimate(t) {
@@ -27,8 +27,8 @@ async function load() {
     canvas.width = width
     canvas.height = height 
 
-
-    const app = await init(canvas)
+    const module = await import(`./app/${APP}/index.js`)
+    const app = await module.init(canvas)
     animate(app.render)
 }
 load()
