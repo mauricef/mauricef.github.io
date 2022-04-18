@@ -16,23 +16,17 @@ export async function init(canvas) {
     const scene = new Scene(gl)
     const renderProgram = scene.program(await fetchText('./app/ship/render.glsl'))
     const randomProgram = scene.program(await fetchText('./app/ship/random.glsl'))
-    const directionProgram = scene.program(await fetchText('./app/ship/direction.glsl'))
     const mouseProgram = scene.program(await fetchText('./app/ship/mouse.glsl'))
     const shipProgram = scene.program(await fetchText('./app/ship/ship.glsl'))
     var buffer = [scene.buffer(), scene.buffer()]
-    var directionBuffer = scene.buffer()
 
     randomProgram.execute({
         u_seed: Math.random()
     }, buffer[0])
 
     function render(time) {
-        directionProgram.execute({
-            u_seed: Math.random(),
-        }, directionBuffer)
-
         shipProgram.execute({
-            u_direction: directionBuffer,
+            u_seed: Math.random(),
             u_prev: buffer[0],
             u_resolution: resolution,
         }, buffer[1])
