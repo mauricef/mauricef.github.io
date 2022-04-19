@@ -1,50 +1,20 @@
 #version 300 es
 precision highp float;
 
-struct MoveAction {
-    vec2 direction;
-    int action;
-};
-
 in vec2 uv;
-uniform float u_seed;
 uniform vec2 u_resolution;
+uniform sampler2D u_ship_action;
 uniform sampler2D u_prev;
 out vec4 color;
 
-float random(float rng) {
-    vec2 xy = gl_FragCoord.xy;
-    vec2 v = vec2(12.9898, 78.233);
-    float s = 43758.5453123 + 1234.56789 * rng;
-    return fract(sin(dot(xy, v)) * s);
-}
-
-int randint(float rng) {
-    float value = random(rng);
-    if (value < .2) {
-        return 0;
-    }
-    else if (value < .4) {
-        return 1;
-    }
-    else if (value < .6) {
-        return 2;
-    }
-    else if (value < .8) {
-        return 3;
-    }
-    else {
-        return 4;
-    }
-}
-vec4 sample_texture(sampler2D sampler, vec2 uv, float dx, float dy) {
+vec4 sample_texture(sampler2D sampler, vec2 offset) {
     vec2 pixelSize = 1. / u_resolution;
-    vec2 position = mod(uv + pixelSize * vec2(dx, dy), 1.);
+    vec2 position = mod(uv + pixelSize * vec2(offset.x, offset.y), 1.);
     return texture(sampler, position);
 }
 
 bool has_ship(vec2 dir) {
-    return sample_texture(u_prev, uv, dir.x, dir.y).r == 1.;
+    return sample_texture(u_prev, dir).r == 1.;
 }
 
 const vec2[5] directions = vec2[5](
@@ -56,12 +26,12 @@ const vec2[5] directions = vec2[5](
 );
 
 void main() {
-    float rng = u_seed;
-    int direction = randint(rng);
     int ship_count = 0;
     for (int i = 0; i < 5; i++)
     {
-        if (has_ship(directions[i]) && direction == i) {
+        vec2 direction = directions[i];
+        int action = int(sample_texture(u_ship_action, direction).r * 5.);
+        if (has_ship(direction) && action == i) {
             ship_count += 1;
         }
     }
