@@ -1,14 +1,13 @@
 import {Scene} from '../../scene.js'
-import {Pointer} from '../../pointer.js'
 
 async function fetchText(path) {
     var response = await fetch(path)
     return await response.text()
 }
 
-export async function init(canvas) {
+export async function init(context) {
+    const {canvas, pointer} = context
     const resolution = [canvas.width, canvas.height]
-    const pointer = new Pointer(canvas)
     const gl = canvas.getContext("webgl2") 
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
