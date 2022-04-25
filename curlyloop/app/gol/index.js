@@ -1,22 +1,9 @@
-import {Scene} from '../../scene.js'
-
-async function fetchText(path) {
-    var response = await fetch(path)
-    return await response.text()
-}
-
 export async function init(context) {
-    const {canvas, pointer} = context
+    const {scene, canvas, pointer} = context
     const resolution = [canvas.width, canvas.height]
-    const gl = canvas.getContext("webgl2") 
-    gl.enable(gl.BLEND)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-    const scene = new Scene(gl)
-    const renderProgram = scene.program(await fetchText('./app/gol/render.glsl'))
-    const randomProgram = scene.program(await fetchText('./app/gol/random.glsl'))
-    const mouseProgram = scene.program(await fetchText('./app/gol/mouse.glsl'))
-    const golProgram = scene.program(await fetchText('./app/gol/gol.glsl'))
+    const randomProgram = scene.program(await scene.fetchText('./app/gol/random.glsl'))
+    const mouseProgram = scene.program(await scene.fetchText('./app/gol/mouse.glsl'))
+    const golProgram = scene.program(await scene.fetchText('./app/gol/gol.glsl'))
     var buffer = [scene.buffer(), scene.buffer()]
 
     randomProgram.execute({
@@ -36,12 +23,8 @@ export async function init(context) {
             u_resolution: resolution
         }, buffer[1])
 
-        renderProgram.execute({
-            u_input: buffer[1],
-            offset: pointer.offset,
-            scale: pointer.scale
-        })
         buffer.reverse()
+        return buffer[0]
     }
     return {render}
 }

@@ -1,3 +1,4 @@
+import {Scene} from '../scene.js'
 import {Pointer} from '../pointer.js'
 import {html, render} from './libs/lit-html/lit-html.js'
 
@@ -11,21 +12,6 @@ var state = {
     paused: false
 }
 
-function animate() {
-    function innerAnimate(t) {
-        if (!state.paused) {
-            state.app.render(t)
-        }
-        requestAnimationFrame(innerAnimate)
-    }
-    requestAnimationFrame(innerAnimate)
-}
-
-async function loadApp(appName, context) {
-    const module = await import(`./app/${appName}/index.js`)
-    const app = await module.init(context)
-    return app
-}
 
 async function load() {
     const canvas = document.getElementById('c')
@@ -46,9 +32,36 @@ async function load() {
     canvas.width = width
     canvas.height = height 
 
-    const main = document.getElementById('main')
+    const gl = canvas.getContext("webgl2") 
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    const scene = new Scene(gl)
+    const renderProgram = scene.program(await scene.fetchText('./app/render.glsl'))
     const pointer = new Pointer(canvas)
-    const context = {canvas, pointer}
+    const context = {scene, canvas, pointer}
+    const main = document.getElementById('main')
+
+    function animate() {
+        var lastBuffer = null
+        function innerAnimate(t) {
+            if (!state.paused) {
+                lastBuffer = state.app.render(t)
+            }
+            renderProgram.execute({
+                u_input: lastBuffer,
+                offset: pointer.offset,
+                scale: pointer.scale
+            })
+            requestAnimationFrame(innerAnimate)
+        }
+        requestAnimationFrame(innerAnimate)
+    }
+
+    async function loadApp(appName) {
+        const module = await import(`./app/${appName}/index.js`)
+        const app = await module.init(context)
+        return app
+    }
 
     function renderAll() {
         const pauseButtonText = state.paused ? 'Play' : 'Pause'
@@ -65,7 +78,7 @@ async function load() {
 
     async function onAppSelected(e) {
         state.appName = e.target.value
-        state.app = await loadApp(state.appName, context)
+        state.app = await loadApp(state.appName)
         renderAll()
     }
     
@@ -73,7 +86,7 @@ async function load() {
         state.paused = !state.paused
         renderAll()
     }
-    state.app = await loadApp(state.appName, context)
+    state.app = await loadApp(state.appName)
     renderAll()
     animate()
 }

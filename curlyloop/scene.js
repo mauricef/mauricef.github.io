@@ -57,4 +57,8 @@ export class Scene {
     buffer() {
         return new Buffer(this.gl)
     }
+    async fetchText(path) {
+        var response = await fetch(path)
+        return await response.text()
+    }
 }
