@@ -1,12 +1,12 @@
 export async function init(context) {
     const {scene, canvas, pointer} = context
     const resolution = [canvas.width, canvas.height]
-    const randomProgram = scene.program(await scene.fetchText('./app/ship/random.glsl'))
-    const mouseProgram = scene.program(await scene.fetchText('./app/ship/mouse.glsl'))
+    const randomProgram = scene.program(await scene.fetchText('./app/random.glsl'))
     const shipActionProgram = scene.program(await scene.fetchText('./app/ship/ship_action.glsl'))    
     const shipProgram = scene.program(await scene.fetchText('./app/ship/ship.glsl'))
     var buffer = [scene.buffer(), scene.buffer()]
     var shipActionBuffer = scene.buffer()
+
     randomProgram.execute({
         u_seed: Math.random()
     }, buffer[0])
@@ -21,13 +21,9 @@ export async function init(context) {
             u_ship_action: shipActionBuffer,
             u_resolution: resolution,
         }, buffer[1])
-        
-        mouseProgram.execute({
-            u_seed: Math.random(),
-            u_pointer: pointer.position,
-            u_resolution: resolution
-        }, buffer[1])
+
         buffer.reverse()
+        // return shipActionBuffer
         return buffer[0]
     }
     return {render}

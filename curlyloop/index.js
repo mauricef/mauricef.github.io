@@ -36,19 +36,26 @@ async function load() {
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
     const scene = new Scene(gl)
+    const mouseProgram = scene.program(await scene.fetchText('./app/mouse.glsl'))
     const renderProgram = scene.program(await scene.fetchText('./app/render.glsl'))
     const pointer = new Pointer(canvas)
     const context = {scene, canvas, pointer}
+    const resolution = [canvas.width, canvas.height]
     const main = document.getElementById('main')
 
     function animate() {
-        var lastBuffer = null
+        var renderBuffer = null
         function innerAnimate(t) {
             if (!state.paused) {
-                lastBuffer = state.app.render(t)
+                renderBuffer = state.app.render(t)
+                mouseProgram.execute({
+                    u_seed: Math.random(),
+                    u_pointer: pointer.position,
+                    u_resolution: resolution
+                }, renderBuffer)
             }
             renderProgram.execute({
-                u_input: lastBuffer,
+                u_input: renderBuffer,
                 offset: pointer.offset,
                 scale: pointer.scale
             })
