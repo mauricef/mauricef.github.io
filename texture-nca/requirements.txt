@@ -1,6 +1,0 @@
-jupyter
-ml_collections
-pillow
-numpy
-matplotlib
-tensorflow
