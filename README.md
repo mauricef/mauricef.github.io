@@ -2,3 +2,4 @@
 - [RL Book](./rl-book)
 - [Jax](./jax-ml)
 - [Curly Loop](./curlyloop)
+- [Texture NCA](./texture-nca/web)
