@@ -1,17 +1,17 @@
+#version 300 es
 precision highp float;
 
-precision mediump float;
-
-varying vec2 uv;
+in vec2 uv;
 uniform float u_time;
 uniform float u_seed;
 uniform vec2 u_resolution;
 uniform sampler2D u_prev;
+out vec4 fragColor;
 
-vec4 sample(sampler2D sampler, vec2 uv, float dx, float dy) {
+vec4 readPixel(sampler2D sampler, vec2 uv, float dx, float dy) {
     vec2 pixelSize = 1. / u_resolution;
     vec2 position = mod(uv + pixelSize * vec2(dx, dy), 1.);
-    return texture2D(sampler, position);
+    return texture(sampler, position);
 }
 
 float random(float seed, float p, vec2 xy) {
@@ -23,11 +23,11 @@ float random(float seed, float p, vec2 xy) {
 }
 
 float gol(sampler2D state, vec2 uv) {
-    float value = sample(state, uv, 0., 0.).r;
+    float value = readPixel(state, uv, 0., 0.).r;
     float sum = 0.0;
     for (float dx=-1.;dx<=1.;dx++) {
         for (float dy=-1.;dy<=1.;dy++) {
-            sum += sample(state, uv, dx, dy).r;
+            sum += readPixel(state, uv, dx, dy).r;
         }
     }
     if(value == 1.0 && (sum < 2.0 || sum > 3.0)){
@@ -61,5 +61,5 @@ void main() {
     else {
         value = gol(u_prev, uv);
     }
-    gl_FragColor = vec4(vec3(value), 1.);
+    fragColor = vec4(vec3(value), 1.);
 }

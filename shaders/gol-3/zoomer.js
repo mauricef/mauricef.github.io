@@ -1,25 +1,6 @@
 
 export class Zoomer {
-    static FS = `
-        precision highp float;
-        uniform sampler2D u_input;
-        uniform vec2 resolution;
-        uniform vec2 offset;
-        uniform vec2 scale;
-
-        void main() {
-            vec2 xy = gl_FragCoord.xy;
-            // xy = xy/vec2(scale);
-            // xy += offset;
-            // vec2 uv = xy / resolution;
-            // gl_FragColor = texture2D(u_input, uv);
-
-            vec2 uv = xy / scale + offset;
-            gl_FragColor = texture2D(u_input, uv);
-        }
-        `
-
-    constructor(gl, shaders) {
+    constructor(gl, FS, shaders) {
         const canvas = gl.canvas
         this.drawPointer = false
         this.inGesture = false
@@ -110,7 +91,7 @@ export class Zoomer {
         canvas.ontouchend = (e) => {
             this.drawPointer = false
         }
-        this.zoomPg = shaders.createProgram(Zoomer.FS)
+        this.zoomPg = shaders.createProgram(FS)
         this.zoomBuffer = shaders.createBuffer()
     }
     getPixelPos() {

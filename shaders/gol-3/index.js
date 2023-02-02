@@ -1,14 +1,5 @@
 import {Zoomer} from './zoomer.js'
 
-const vs = `
-attribute vec4 position;
-varying vec2 uv;
-
-void main() {
-    uv = position.xy * .5 + .5;
-    gl_Position = position;
-}
-`
 async function fetchText(path) {
     const response = await fetch(path)
     return response.text()
@@ -16,18 +7,9 @@ async function fetchText(path) {
 
 export var SHADERS = {}
 
-const renderFs = `
-precision mediump float;
-
-varying vec2 uv;
-uniform sampler2D u_input;
-
-void main() {
-    gl_FragColor = texture2D(u_input, uv);
-}
-`
-
 export async function init(gl) {
+    const renderFs = await fetchText('./glsl/render.frag')
+    const vs = await fetchText('./glsl/main.vert')
     const quad = twgl.createBufferInfoFromArrays(gl, {
         position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
     })
@@ -60,10 +42,6 @@ export async function init(gl) {
         return (uniforms, outputBuffer) => executeProgram(pg, uniforms, outputBuffer)
     }
 
-    async function loadShaderText(name) {
-        const fs = await fetchText(`./glsl/${name}.glsl`)
-        SHADERS[name] = ShaderProgram(fs)
-    }
     SHADERS.createBuffer = Buffer
     SHADERS.createProgram = ShaderProgram
     SHADERS.render = function(buffer) {
@@ -139,10 +117,11 @@ async function loadScene() {
 
     async function load() {
         await init(gl)
-        const fs = await fetchText('./fs.glsl')
+        const zoomFs = await fetchText('./glsl/zoom.frag')
+        const fs = await fetchText('./glsl/gol.frag')
         const resolution = [gl.canvas.width, gl.canvas.height]
         const scene = createScene(fs, gl, resolution, SHADERS)
-        const zoomer = new Zoomer(gl, SHADERS)
+        const zoomer = new Zoomer(gl, zoomFs, SHADERS)
         function render(time) {
             const resolution = zoomer.resolution
             const zoomScale = zoomer.zoomScale

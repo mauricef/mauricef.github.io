@@ -28,6 +28,15 @@ function createQuadArray(x, y, width, height) {
     ])
 }
 
+function blurKernel(weight) {
+    var c = weight
+    var n = (1 - weight) / 8
+    return [
+        n,n,n,
+        n,c,n,
+        n,n,n
+    ]
+}
 async function run() {
     /** @type {HTMLCanvasElement} */
     var canvas = document.querySelector("#c")
@@ -51,16 +60,16 @@ async function run() {
         }
     })
 
-    function render() {
+    function render(time) {
+        var timeInSeconds = time / 1000
+        var weight = Math.sin(Math.PI * 2 * timeInSeconds)
+        weight = Math.abs(weight)
+        console.log(weight)
         gl.useProgram(programInfo.program)
         twgl.setUniforms(programInfo, {
             u_resolution: [gl.canvas.width, gl.canvas.height],
             u_image: imgTex,
-            u_kernel: [
-                1/9, 1/9, 1/9,
-                1/9, 1/9, 1/9,
-                1/9, 1/9, 1/9
-            ]
+            u_kernel: blurKernel(weight)
         })
         twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo)
         twgl.drawBufferInfo(gl, bufferInfo)
