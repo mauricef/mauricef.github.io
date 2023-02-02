@@ -1,6 +1,6 @@
 
 export class Zoomer {
-    constructor(gl, FS, shaders) {
+    constructor(gl) {
         const canvas = gl.canvas
         this.drawPointer = false
         this.inGesture = false
@@ -13,7 +13,6 @@ export class Zoomer {
         this.dragInitialZoomScale = null
         this.canvas = canvas
         this.resolution = {width: canvas.width, height: canvas.height}
-        this.shaders = shaders
 
         canvas.oncontextmenu = (e) => {
             e.preventDefault()
@@ -91,8 +90,6 @@ export class Zoomer {
         canvas.ontouchend = (e) => {
             this.drawPointer = false
         }
-        this.zoomPg = shaders.createProgram(FS)
-        this.zoomBuffer = shaders.createBuffer()
     }
     getPixelPos() {
         var x = this.pointerPos.x, y = this.pointerPos.y
@@ -141,20 +138,4 @@ export class Zoomer {
         }
     }
     
-    render(buffer) {
-        const scale = [
-            this.resolution.width * this.zoomScale,
-            this.resolution.height * this.zoomScale
-        ]
-        const offset = [
-            this.zoomOffset.x / this.resolution.width,
-            this.zoomOffset.y / this.resolution.height
-        ]
-        this.zoomPg({
-            u_input: buffer,
-            offset: offset,
-            scale: scale,
-        }, this.zoomBuffer)
-        this.shaders.render(this.zoomBuffer)
-    }
 }
