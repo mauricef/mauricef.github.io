@@ -3,7 +3,7 @@ This is an implementation of the [2D Liquid Simulator With Cellular Automaton in
 
 I stumbled across this in a Hacker News [post](https://news.ycombinator.com/item?id=34946877) and just so happen to be interested in putting some time into coding in WebGL again, this seems like a fun and interesting first project.
 
-[JS Version](./canvas/)
+[JS Version](./canvas/ca-fluid.html)
 
 ## Goals
 
