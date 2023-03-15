@@ -3,3 +3,4 @@
 - [Jax](./jax-ml)
 - [Curly Loop](./curlyloop)
 - [Texture NCA](./texture-nca/web)
+- [CA Fluid](./ca-fluid)
