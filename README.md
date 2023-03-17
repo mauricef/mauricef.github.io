@@ -3,7 +3,3 @@
 - [Instagram](https://instagram.com/mauricef.gg)
 - [LinkedIn](https://www.linkedin.com/in/mauricef-gg/)
 - [Email](mailto:mauricef@gmail.com)
-
-## Posts
-
-- 2023-03-10 [Notes On "Code Goes In Art Comes Out" by Tyler Hobbs"](posts/2023-03-10-notes-from-code-goes-in-art-comes-out-tyler-hobbs.md)
