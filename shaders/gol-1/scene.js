@@ -1,3 +1,7 @@
+import {Stats} from './Stats.js'
+
+var stats = new Stats();
+
 function scaleByPixelRatio (input) {
     let pixelRatio = window.devicePixelRatio || 1
     return Math.floor(input * pixelRatio)
@@ -147,6 +151,8 @@ function createResources({module, scene}) {
     return {textures, programs}
 }
 export async function run({canvas, moduleUri}) {
+    document.body.appendChild( stats.dom );
+    stats.showPanel( 1 ); // 0: fps, 1: ms, 2: mb, 3+: custom
 
     canvas.width = scaleByPixelRatio(canvas.clientWidth)
     canvas.height = scaleByPixelRatio(canvas.clientHeight)
@@ -159,9 +165,13 @@ export async function run({canvas, moduleUri}) {
     const context = {aspectRatio}
     Object.assign(context, resources)
     const simulation = await module.create(context)
+
+
     async function update(t) {
+        stats.begin()
         const mousePt = pointer.down ? pointer.pt : null
         simulation.step({t, mousePt})
+        stats.end()
         requestAnimationFrame(update)
     }
     requestAnimationFrame(update)

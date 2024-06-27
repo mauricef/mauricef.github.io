@@ -125,7 +125,7 @@ const RENDER_SHADER_SOURCE = `
         gl_FragColor = vec4(color.rgb, 1.);
     }
 `
-const size = 256
+const size = 1920
 
 export const textures = {
     cells: {size: size, filter: 'NEAREST'},
