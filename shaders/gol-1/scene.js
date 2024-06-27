@@ -1,6 +1,5 @@
 import {Stats} from './Stats.js'
-
-var stats = new Stats();
+import * as dat from './dat.gui.module.js';
 
 function scaleByPixelRatio (input) {
     let pixelRatio = window.devicePixelRatio || 1
@@ -116,7 +115,7 @@ function Program(gl, vertexShader, fragmentShader) {
     }
 }
 
-function Scene(canvas) {
+function Scene(canvas, size) {
     const gl = canvas.getContext('webgl')
 
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
@@ -135,6 +134,7 @@ function Scene(canvas) {
         texture(args) {
             args = args || {}
             args.gl = gl
+            args.size = size
             return Texture(args)
         }
     }
@@ -150,15 +150,17 @@ function createResources({module, scene}) {
     })
     return {textures, programs}
 }
-export async function run({canvas, moduleUri}) {
-    document.body.appendChild( stats.dom );
-    stats.showPanel( 1 ); // 0: fps, 1: ms, 2: mb, 3+: custom
 
+const config = {
+    size: 256
+}
+
+export async function run({canvas, moduleUri}) {
     canvas.width = scaleByPixelRatio(canvas.clientWidth)
     canvas.height = scaleByPixelRatio(canvas.clientHeight)
     
     const pointer = monitorMouse(canvas)
-    const scene = new Scene(canvas)
+    const scene = new Scene(canvas, config.size)
     const module = await import(moduleUri)
     const resources = createResources({module, scene})
     const aspectRatio = canvas.width / canvas.height
@@ -176,7 +178,7 @@ export async function run({canvas, moduleUri}) {
     }
     requestAnimationFrame(update)
     return scene
-}
+
 
 function getResolution(gl, resolution) {
     let aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
@@ -295,3 +297,11 @@ function Texture(args) {
         }
     }
 }
+
+const gui = new dat.GUI();
+const stats = new Stats();
+
+document.body.appendChild( stats.dom );
+stats.showPanel(0)
+const canvas = document.getElementById("main-canvas")
+const scene = run({canvas, moduleUri: './gol.js'}) 

@@ -1,17 +1,12 @@
 import {Zoomer} from './zoomer.js'
+import Stats from './lib/stats.module.js'
+import * as dat from './lib/dat.gui.module.js'
 
 async function fetchText(path) {
     const response = await fetch(path)
     return response.text()
 }
 
-function animate(f) {
-    function innerAnimate(t) {
-        f(t)
-        requestAnimationFrame(innerAnimate)
-    }
-    requestAnimationFrame(innerAnimate)
-}
 function modulo(a, n) {
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Remainder
     return ((a % n ) + n ) % n
@@ -54,33 +49,61 @@ function executeProgram(gl, pg, buffers, uniforms, outputBuffer) {
     twgl.drawBufferInfo(gl, buffers)
 }
 
-const MAX_TEXTURE_SIZE = {width: 512, height: 512}
+async function loadShaderText() {
+    return {
+        vs: await fetchText('./glsl/main.vert'),
+        gol: await fetchText('./glsl/gol.frag'),
+        zoom: await fetchText('./glsl/zoom.frag'),
+        render: await fetchText('./glsl/render.frag')
+    }
+}
 
-async function run() {
-    const canvas = document.getElementById('c')
+function loadContext(canvas, size) {
     const gl = canvas.getContext("webgl2") 
     const canvasClientSize = {width: canvas.clientWidth, height: canvas.clientHeight}
-    const {width, height} = limitSizeMaintainRatio(canvasClientSize, MAX_TEXTURE_SIZE)
+    const {width, height} = limitSizeMaintainRatio(canvasClientSize, size)
     canvas.width = width
     canvas.height = height 
     gl.viewport(0, 0, width, height)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    return [gl, {width, height}]
+}
 
-    const vs = await fetchText('./glsl/main.vert')
-    const golFs = await fetchText('./glsl/gol.frag')
-    const golPg = twgl.createProgramInfo(gl, [vs, golFs])
-    const zoomerFs = await fetchText('./glsl/zoom.frag')
-    const zoomerPg = twgl.createProgramInfo(gl, [vs, zoomerFs])
-    const renderFs = await fetchText('./glsl/render.frag')
-    const renderPg = twgl.createProgramInfo(gl, [vs, renderFs])
-    const quad = twgl.createBufferInfoFromArrays(gl, {
-        position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
-    })
+async function run() {
+    const config = {
+        size: {width: 1920, height: 1080}
+    }
+
+    const stats = Stats()
+    stats.showPanel(0)
+    document.body.appendChild(stats.dom)
+
+    const gui = new dat.GUI()
+    gui.add(config.size, 'width')
+    gui.add(config.size, 'height')
+    
+    const canvas = document.getElementById('c')
+
+    const shaderText = await loadShaderText()
+    
+    const [gl, {width, height}] = loadContext(canvas, config.size)
+
+
+    const golPg = twgl.createProgramInfo(gl, [shaderText.vs, shaderText.gol])
+    const zoomerPg = twgl.createProgramInfo(gl, [shaderText.vs, shaderText.zoom])
+    const renderPg = twgl.createProgramInfo(gl, [shaderText.vs, shaderText.render])
+
     var buffers = [Buffer(gl), Buffer(gl)]
     var first = true
     const zoomer = new Zoomer(gl)
     const zoomerBuffer = Buffer(gl)
+
+    const quad = twgl.createBufferInfoFromArrays(gl, {
+        position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
+    })
+    
+
 
     function render(time) {
         const resolution = zoomer.resolution
@@ -127,6 +150,12 @@ async function run() {
         }, zoomerBuffer)
         executeProgram(gl, renderPg, quad, {u_input: zoomerBuffer})
     }
-    animate(render)
+    function animationFrame(t) {
+        stats.begin()
+        render(t)
+        stats.end()
+        requestAnimationFrame(animationFrame)
+    }
+    requestAnimationFrame(animationFrame)
 }
 run()
