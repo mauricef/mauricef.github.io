@@ -13,7 +13,7 @@ export function createDemo(divId, modelsSet) {
   const $ = q => root.querySelector(q);
   const $$ = q => root.querySelectorAll(q);
 
-  const W = 1024, H = 1024;
+  const W = 1920, H = 1080;
   let ca = null;
   const modelDir = 'webgl_models8';
   let experiment = 'ex3';
