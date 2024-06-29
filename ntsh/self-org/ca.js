@@ -461,7 +461,7 @@ export class CA {
         this.gridSize = gridSize || [96, 96];
 
         this.updateProbability = 0.5;
-        this.shuffledMode = true;
+        this.shuffledMode = false;
 
         this.rotationAngle = 0.0;
         this.alignment = 0;

@@ -13,15 +13,15 @@ export function createDemo(divId, modelsSet) {
   const $ = q => root.querySelector(q);
   const $$ = q => root.querySelectorAll(q);
 
-  const W = 1920, H = 1080;
+  const W = 256, H = 256
   let ca = null;
   const modelDir = 'webgl_models8';
   let experiment = 'ex3';
   let paused = false;
 
   const canvas = $('#demo-canvas');
-  canvas.width = W*6; //so we can render hexells
-  canvas.height = H*6;
+  canvas.width = W; //so we can render hexells
+  canvas.height = H;
   const gl = canvas.getContext("webgl");
 
   const maxZoom = 32.0;
