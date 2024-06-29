@@ -43,10 +43,8 @@ export function createDemo(divId, modelsSet) {
   async function initLegend(models) {
     const brush2idx = Object.fromEntries(models.model_names.map((s, i) => [s, i]));
     function setModel(name) {
-      ca.clearCircle(0, 0, 1000);
       params.model = brush2idx[name];
       params.modelname = name;
-      ca.paint(0, 0, 10000, brush2idx[name], [0, 0]);
       updateUI();   
     }
 
@@ -133,7 +131,7 @@ export function createDemo(divId, modelsSet) {
     const [x, y] = pos;
     const [px, py] = prevPos;
     ca.clearCircle(x, y, params.brushSize, null, params.zoom);
-    // ca.paint(x, y, params.brushSize, params.model, [x - px, y - py]);
+    ca.paint(x, y, params.brushSize, params.model, [x - px, y - py]);
     prevPos = pos;
   }
 
