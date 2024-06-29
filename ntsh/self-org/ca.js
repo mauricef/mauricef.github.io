@@ -251,105 +251,14 @@ const PROGRAMS = {
       setOutput(state + update);
     }`,
     vis: `
-    uniform float u_raw;
-    uniform float u_zoom;
-    uniform float u_perceptionCircle, u_arrows;
     varying vec2 uv;
-
-    float clip01(float x) {
-        return min(max(x, 0.0), 1.0);
-    }
-
-    const float PI = 3.141592653;
-
-    float peak(float x, float r) {
-        float y = x/r;
-        return exp(-y*y);
-    }
-
-    float getElement(vec4 v, float i) {
-        if (i<1.0) return v.x;
-        if (i<2.0) return v.y;
-        if (i<3.0) return v.z;
-        return v.w;
-    }
-
-    vec3 onehot3(float i) {
-        if (i<1.0) return vec3(1.0, 0.0, 0.0);
-        if (i<2.0) return vec3(0.0, 1.0, 0.0);
-        return vec3(0.0, 0.0, 1.0);
-    }
-
-    float sdTriangleIsosceles( in vec2 p, in vec2 q ) {
-        p.x = abs(p.x);
-        vec2 a = p - q*clamp( dot(p,q)/dot(q,q), 0.0, 1.0 );
-        vec2 b = p - q*vec2( clamp( p.x/q.x, 0.0, 1.0 ), 1.0 );
-        float s = -sign( q.y );
-        vec2 d = min( vec2( dot(a,a), s*(p.x*q.y-p.y*q.x) ),
-                      vec2( dot(b,b), s*(p.y-q.y)  ));
-        return -sqrt(d.x)*sign(d.y);
-    }
-    
-
     void main() {
         vec2 xy = vec2(uv.x, 1.0-uv.y);
-        if (u_raw > 0.5) {
-            gl_FragColor = texture2D(u_input_tex, xy);
-            gl_FragColor.a = 1.0;
-        } else {
-            xy = (xy + vec2(0.5)*(u_zoom-1.0))/u_zoom;
-            xy *= u_input.size;
-            vec2 fp = 2.0*fract(xy)-1.0;
-
-            if (u_hexGrid > 0.0) {
-                vec4 r = getHex(xy-u_input.size*0.5);
-                xy = r.zw+u_input.size*0.5;
-                fp = r.xy;
-            }
-
-            vec3 cellRGB = u_input_read(xy, 0.0).rgb/2.0+0.5;
-            vec3 rgb = cellRGB;
-            if (3.0 < u_zoom) {
-                vec2 dir = getCellDirection(floor(xy)+0.5);
-                float s = dir.x, c = dir.y;
-                fp = mat2(c, s, -s, c) * fp;    
-                float r = length(fp);
-                float fade = clip01((u_zoom-3.0)/3.0);
-                float m = 1.0;//1.0-min(r*r*r, 1.0)*fade;
-                rgb *= m;
-                if (12.0 < u_zoom) {
-                    float ang = atan(-fp.x, fp.y)/(2.0*PI)+0.5;
-                    float ch = mod(ang*u_input.depth+1.5, u_input.depth);
-                    float barLengh = 0.0;
-                    vec3 barColor = vec3(0.5);
-                    if (ch < 3.0) {
-                        vec3 i3 = onehot3(ch);
-                        barColor = i3;
-                        barLengh = dot(cellRGB, i3);
-                    } else {
-                        vec4 v4 = u_input_read01(xy, floor(ch/4.0));
-                        barLengh = getElement(v4, mod(ch, 4.0));
-                    }
-
-                    float c = mod(ch, 1.0);
-                    c = peak(c-0.5, 0.2);
-                    if (r>barLengh)
-                      c = 0.0;
-                    float fade = clip01((u_zoom-12.0)/8.0);
-                    c *= fade;
-                    rgb += barColor*c;
-
-                    float arrow = sdTriangleIsosceles((fp+vec2(0.0, 0.95))*vec2(4.0, 4.0), vec2(1.0, 1.0));
-                    arrow = clip01(1.0-abs(arrow)*u_zoom/4.0);
-                    rgb += arrow*fade*u_arrows;
-
-                    float cr = length(u_input.size/2.0-0.5-xy);
-                    rgb += peak(cr-1.5, 0.5/u_zoom)*fade*u_perceptionCircle;
-                }
-            } 
-
-            gl_FragColor = vec4(rgb, 1.0);
-        }
+        xy *= u_input.size;
+        vec2 fp = 2.0*fract(xy)-1.0;        
+        vec3 cellRGB = u_input_read(xy, 0.0).rgb/2.0+0.5;
+        vec3 rgb = cellRGB;
+        gl_FragColor = vec4(rgb, 1.0);
     }`
 }
 
@@ -431,12 +340,6 @@ export class CA {
         this.setupBuffers();
         const visNames = Object.getOwnPropertyNames(this.buf);
         visNames.push('color');
-
-        if (gui) {
-            gui.add(this, 'rotationAngle').min(0.0).max(360.0);
-            gui.add(this, 'alignment', { cartesian: 0, polar: 1, bipolar: 2 }).listen();
-        }
-
         this.clearCircle(0, 0, 10000);
     }
 
@@ -488,49 +391,6 @@ export class CA {
         }
     }
 
-    benchmark() {
-        const gl = this.gl;
-        const flushBuf = new Uint8Array(4);
-        const flush = buf=>{
-            buf = buf || this.buf.state;
-            // gl.flush/finish don't seem to do anything, so reading a single 
-            // pixel from the state buffer to flush the GPU command pipeline
-            twgl.bindFramebufferInfo(gl, buf.fbi);
-            gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, flushBuf);
-        }
-
-        flush();
-        const stepN = 100;
-        const start = Date.now();
-        for (let i = 0; i < stepN; ++i)
-            this.step();
-        flush();
-        const total = (Date.now() - start) / stepN;
-
-        const ops = ['perception'];
-        for (let i=0; i<this.layers.length; ++i)
-            ops.push(`layer${i}`);
-        ops.push('newState');
-        let perOpTotal = 0.0;
-        const perOp = [];
-        for (const op of ops) {
-            const start = Date.now();
-            for (let i = 0; i < stepN; ++i) {
-                this.step(op);
-            }
-            flush(this.buf[op]);
-            const dt = (Date.now() - start) / stepN;
-            perOpTotal += dt
-            perOp.push([op, dt]);
-        }
-        const perOpStr = perOp.map((p) => {
-            const [programName, dt] = p;
-            const percent = 100.0 * dt / perOpTotal;
-            return `${programName}: ${percent.toFixed(1)}%`;
-        }).join(', ');
-        return `${(total).toFixed(2)} ms/step, ${(1000.0 / total).toFixed(2)} step/sec\n` + perOpStr + '\n\n';
-    }
-
     paint(x, y, r, brush) {
         this.runLayer(this.progs.paint, this.buf.control, {
             u_pos: [x, y], u_r: r, u_brush: [brush, 0, 0, 0], u_hexGrid: this.hexGrid, u_zoom: 1.0 
@@ -579,13 +439,11 @@ export class CA {
         });
     }
 
-    draw(zoom) {
+    draw() {
         const gl = this.gl;
-        zoom = zoom || 1.0;
-
         gl.useProgram(this.progs.vis.program);
         twgl.setBuffersAndAttributes(gl, this.progs.vis, this.quad);
-        const uniforms = { u_raw: 0.0, u_zoom: zoom,
+        const uniforms = { u_raw: 0.0, u_zoom: 1,
             u_angle: this.rotationAngle / 180.0 * Math.PI,
             u_alignment: this.alignment,
             u_perceptionCircle: this.perceptionCircle,
@@ -593,10 +451,7 @@ export class CA {
             u_hexGrid: this.hexGrid,
         };
         let inputBuf = this.buf.state;
-        if (this.visMode != 'color') {
-            inputBuf = this.buf[this.visMode];
-            uniforms.u_raw = 1.0;
-        }
+        
         setTensorUniforms(uniforms, 'u_input', inputBuf);
         twgl.setUniforms(this.progs.vis, uniforms);
         twgl.drawBufferInfo(gl, this.quad);
