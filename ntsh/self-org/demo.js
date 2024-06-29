@@ -20,7 +20,7 @@ export function createDemo(divId, modelsSet) {
   let paused = false;
 
   const canvas = $('#demo-canvas');
-  canvas.width = W; //so we can render hexells
+  canvas.width = W; 
   canvas.height = H;
   const gl = canvas.getContext("webgl");
 

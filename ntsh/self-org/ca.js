@@ -1,31 +1,3 @@
-/*
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-/*
-Usage:
-  const gui = new dat.GUI();
-  const ca = new CA(gl, models_json, [W, H], gui); // gui is optional
-  ca.step();
-  
-  ca.paint(x, y, radius, modelIndex);
-  ca.clearCircle(x, y, radius;
-
-  const stats = ca.benchmark();
-  ca.draw();
-  ca.draw(zoom);
-*/
-
 const vs_code = `
     attribute vec4 position;
     varying vec2 uv;
@@ -104,11 +76,6 @@ const PREFIX = `
         v = v/p.x + p.y;
         gl_FragColor = v;
     }
-
-    #ifdef SPARSE_UPDATE
-        uniform sampler2D u_shuffleTex, u_unshuffleTex;
-        uniform vec2 u_shuffleOfs;
-    #endif
 
     ${defInput('u_input')}
 
@@ -206,10 +173,6 @@ const PROGRAMS = {
 
     void main() {
         vec2 xy = getOutputXY();
-        #ifdef SPARSE_UPDATE
-            xy = texture2D(u_shuffleTex, xy/u_output.size).xy*255.0+0.5 + u_shuffleOfs;
-            xy = mod(xy, u_input.size);
-        #endif
         float ch = getOutputChannel();
         if (ch >= u_output.depth4)
             return;
@@ -253,9 +216,6 @@ const PROGRAMS = {
       vec2 fuzz = (hash23(vec3(xy, u_seed+ch))-0.5)*u_fuzz;
 
       vec2 realXY = xy;
-      #ifdef SPARSE_UPDATE
-        realXY = texture2D(u_shuffleTex, xy/u_output.size).xy*255.0+0.5 + u_shuffleOfs;
-      #endif
       float modelIdx = u_control_read(realXY+fuzz, 0.0).x+0.5;
       p.x += floor(mod(modelIdx, u_layout.x));
       p.y += floor(modelIdx/u_layout.x);
@@ -282,22 +242,12 @@ const PROGRAMS = {
 
     void main() {
       vec2 xy = getOutputXY();
-    //   if (xy.y>100.0 && xy.y < 150.0) {
-    //       xy.x -= 1.0;
-    //   }
       float ch = getOutputChannel();
       vec4 state = u_input_read(xy, ch); //u_input_readUV(uv);
       vec4 update = vec4(0.0);
-      #ifdef SPARSE_UPDATE
-        vec4 shuffleInfo = texture2D(u_unshuffleTex, fract((xy-u_shuffleOfs)/u_output.size));
-        if (shuffleInfo.z > 0.5) {
-            update = u_update_read(shuffleInfo.xy*255.0+0.5, getOutputChannel());
-        }
-      #else
-        if (hash13(vec3(xy, u_seed)) <= u_updateProbability) {
-            update = u_update_readUV(uv);    
-        }
-      #endif
+      if (hash13(vec3(xy, u_seed)) <= u_updateProbability) {
+        update = u_update_readUV(uv);    
+      }
       setOutput(state + update);
     }`,
     vis: `
@@ -461,7 +411,6 @@ export class CA {
         this.gridSize = gridSize || [96, 96];
 
         this.updateProbability = 0.5;
-        this.shuffledMode = false;
 
         this.rotationAngle = 0.0;
         this.alignment = 0;
@@ -474,7 +423,7 @@ export class CA {
         this.layers = [];
         this.setWeights(models);
 
-        this.progs = createPrograms(gl, this.shuffledMode ? '#define SPARSE_UPDATE\n' : '');
+        this.progs = createPrograms(gl);
         this.quad = twgl.createBufferInfoFromArrays(gl, {
             position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
         });
@@ -486,10 +435,6 @@ export class CA {
         if (gui) {
             gui.add(this, 'rotationAngle').min(0.0).max(360.0);
             gui.add(this, 'alignment', { cartesian: 0, polar: 1, bipolar: 2 }).listen();
-            //gui.add(this, 'fuzz').min(0.0).max(128.0);
-            //gui.add(this, 'perceptionCircle').min(0.0).max(1.0);
-            //gui.add(this, 'visMode', visNames);
-            gui.add(this, 'hexGrid');
         }
 
         this.clearCircle(0, 0, 10000);
@@ -498,27 +443,6 @@ export class CA {
     setupBuffers() {
         const gl = this.gl;
         const [gridW, gridH] = this.gridSize;
-        const shuffleH = Math.ceil(gridH * this.updateProbability);
-        const shuffleCellN = shuffleH * gridW;
-        const totalCellN = gridW * gridH;
-        const shuffleBuf = new Uint8Array(shuffleCellN * 4);
-        const unshuffleBuf = new Uint8Array(totalCellN * 4);
-        let k = 0;
-        for (let i = 0; i < totalCellN; ++i) {
-            if (Math.random() < (shuffleCellN - k) / (totalCellN - i)) {
-                shuffleBuf[k * 4 + 0] = i % gridW;
-                shuffleBuf[k * 4 + 1] = Math.floor(i / gridW);
-                unshuffleBuf[i * 4 + 0] = k % gridW;
-                unshuffleBuf[i * 4 + 1] = Math.floor(k / gridW);
-                unshuffleBuf[i * 4 + 2] = 255;
-                k += 1;
-            }
-        }        
-        this.shuffleTex = twgl.createTexture(gl, { minMag: gl.NEAREST, width: gridW, height: shuffleH, src: shuffleBuf});
-        this.unshuffleTex = twgl.createTexture(gl, { minMag: gl.NEAREST, width: gridW, height: gridH, src: unshuffleBuf});
-        this.shuffleOfs = [0, 0];
-
-        const updateH = this.shuffledMode ? shuffleH : gridH;
         const perception_n = this.layers[0].in_n;
         const lastLayer = this.layers[this.layers.length-1];
         const channel_n = lastLayer.out_n;
@@ -527,11 +451,11 @@ export class CA {
             control: createTensor(gl, gridW, gridH, 4, [255.0, 0.0]),
             state: createTensor(gl, gridW, gridH, channel_n, stateQuantization),
             newState: createTensor(gl, gridW, gridH, channel_n, stateQuantization),
-            perception: createTensor(gl, gridW, updateH, perception_n, stateQuantization),
+            perception: createTensor(gl, gridW, gridH, perception_n, stateQuantization),
         };
         for (let i=0; i<this.layers.length; ++i) {
             const layer = this.layers[i];
-            this.buf[`layer${i}`] = createTensor(gl, gridW, updateH, layer.out_n, layer.quantScaleZero);
+            this.buf[`layer${i}`] = createTensor(gl, gridW, gridH, layer.out_n, layer.quantScaleZero);
         }
     }
 
@@ -539,12 +463,7 @@ export class CA {
         stage = stage || 'all';
         if (!this.layers.every(l=>l.ready)) 
             return;
-    
-        if (stage == 'all') {
-            const [gridW, gridH] = this.gridSize;
-            this.shuffleOfs = [Math.floor(Math.random() * gridW), Math.floor(Math.random() * gridH)];
-        }
-        
+            
         if (stage == 'all' || stage == 'perception') {
             this.runLayer(self.progs.perception, this.buf.perception, {
                 u_input: this.buf.state, u_angle: this.rotationAngle / 180.0 * Math.PI,
@@ -560,7 +479,6 @@ export class CA {
         if (stage == 'all' || stage == 'newState') {
             this.runLayer(this.progs.update, this.buf.newState, {
                 u_input: this.buf.state, u_update: inputBuf,
-                u_unshuffleTex: this.unshuffleTex,
                 u_seed: Math.random() * 1000, u_updateProbability: this.updateProbability
             });
         }
@@ -643,8 +561,6 @@ export class CA {
                 uniforms[name] = val;
             }
         }
-        uniforms['u_shuffleTex'] = this.shuffleTex;
-        uniforms['u_shuffleOfs'] = this.shuffleOfs;
         setTensorUniforms(uniforms, 'u_output', output);
 
         twgl.bindFramebufferInfo(gl, output.fbi);
