@@ -78,12 +78,6 @@ const PREFIX = `
     }
 
     ${defInput('u_input')}
-
-    
-    vec2 getCellDirection(vec2 xy) {
-        vec2 dir = vec2(0.0, 1.0);
-        return dir;
-    }
 `;
 
 const PROGRAMS = {
@@ -112,10 +106,11 @@ const PROGRAMS = {
     const mat3 gauss = mat3(1.0, 2.0, 1.0, 2.0, 4.0-16.0, 2.0, 1.0, 2.0, 1.0)/8.0;
     vec4 conv3x3(vec2 xy, float inputCh, mat3 filter) {
         vec4 a = vec4(0.0);
-        for (int y=0; y<3; ++y)
-        for (int x=0; x<3; ++x) {
-          vec2 p = xy+vec2(float(x-1), float(y-1));
-          a += filter[y][x] * u_input_read(p, inputCh);
+        for (int y=0; y<3; ++y) {
+            for (int x=0; x<3; ++x) {
+                vec2 p = xy+vec2(float(x-1), float(y-1));
+                a += filter[y][x] * u_input_read(p, inputCh);
+            }
         }
         return a;
     }
@@ -130,13 +125,16 @@ const PROGRAMS = {
         float inputCh = ch-filterBand*u_input.depth4;
         if (filterBand < 0.5) {
             setOutput(u_input_read(xy, inputCh));
-        } else if (filterBand < 2.5) {
+        }
+        else if (filterBand < 1.5) {
             vec4 dx = conv3x3(xy, inputCh, sobelX);
+            setOutput(dx);
+        }
+        else if (filterBand < 2.5) {
             vec4 dy = conv3x3(xy, inputCh, sobelY);
-            vec2 dir = getCellDirection(xy);
-            float s = dir.x, c = dir.y;
-            setOutput(filterBand < 1.5 ? dx*c-dy*s : dx*s+dy*c);
-        } else {
+            setOutput(dy);
+        } 
+        else {
             setOutput(conv3x3(xy, inputCh, gauss));
         }
     }`,
@@ -191,7 +189,7 @@ const PROGRAMS = {
     void main() {
       vec2 xy = getOutputXY();
       float ch = getOutputChannel();
-      vec4 state = u_input_read(xy, ch); //u_input_readUV(uv);
+      vec4 state = u_input_read(xy, ch);
       vec4 update = vec4(0.0);
       if (hash13(vec3(xy, u_seed)) <= u_updateProbability) {
         update = u_update_readUV(uv);    
@@ -251,8 +249,14 @@ function setTensorUniforms(uniforms, name, tensor) {
 function createDenseInfo(gl, params) {
     const coefs = [params.scale, 127.0 / 255.0];
     const [in_n, out_n] = params.shape;
-    const info = { coefs, layout: params.layout, in_n: in_n - 1, out_n,
-        quantScaleZero: params.quant_scale_zero, ready: false };
+    const info = { 
+        coefs, 
+        layout: params.layout, 
+        in_n: in_n - 1, 
+        out_n,
+        quantScaleZero: params.quant_scale_zero, 
+        ready: false 
+    }
     info.tex = twgl.createTexture(gl, {
         minMag: gl.NEAREST, src: params.data, flipY: false, premultiplyAlpha: false,
     }, ()=>{
@@ -320,15 +324,8 @@ export class CA {
         });
     }
 
-    clearCircle(x, y, r, brush) {
-        self.runLayer(self.progs.paint, this.buf.state, {
-            u_pos: [x, y], u_r: r, u_brush: [0, 0, 0, 0]
-        });
-    }
-
     setWeights(models) {
         const gl = this.gl;
-        this.layers.forEach(layer=>gl.deleteTexture(layer));
         this.layers = models.layers.map(layer=>createDenseInfo(gl, layer));
     }
 

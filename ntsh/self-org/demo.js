@@ -10,14 +10,14 @@ async function createDemo() {
   stats.showPanel(0)
   document.body.appendChild(stats.dom)
 
-  const r = await fetch('models.json')
+  const r = await fetch('models.2.json')
   const models = await r.json()
   const gui = new dat.GUI()
   const params = {
     model: 0,
-    size: {w: 128, h: 128},
+    size: {w: 256, h: 256},
     reload: function() { reloadDemo() },
-    stepsPerFrame: 1
+    stepsPerFrame: 4
   }
   const name2idx = Object.fromEntries(models.model_names.map((s, i) => [s, i]));
   gui.add(params, 'model').options(name2idx)
