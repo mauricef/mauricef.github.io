@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <!-- Load TensorFlow.js -->
+    <script src="tf.min.js"> </script>
+    <script src="tf-backend-webgpu.js"> </script>
+    <script src="stats.js"></script>
+
+  </head>
+
+  <body>
+    <canvas id="c" width="256" height="256"></canvas>
+  </body>
+    <script>
+        function countNeighbors(alive) {
+            const [h, w] = alive.shape
+            var x = tf.cast(alive, 'float32').reshape(([1, h, w, 1]))
+            const df = tf.ones([3, 3, 1, 1])
+            const pf = tf.eye(1, 1, [1, 1])
+            const strides = [1, 1, 1, 1]
+            const count = tf.separableConv2d(x, df, pf, strides, 'same')
+            return count.squeeze()
+        }
+        function golStep(alive) {
+            const count = countNeighbors(alive)
+            const x = tf.cast(alive, 'bool')
+            var nextAlive = tf.logicalAnd(x, tf.equal(count, 3))
+            nextAlive = tf.logicalOr(nextAlive, tf.logicalAnd(x, tf.equal(count, 4)))
+            nextAlive = tf.logicalOr(nextAlive, tf.logicalAnd(tf.logicalNot(x), tf.equal(count, 3)))
+            return nextAlive
+        }
+
+        const stats = Stats()
+        const canvas = document.querySelector('#c')    
+        stats.showPanel(0)
+        document.body.appendChild(stats.dom)
+        tf.setBackend('webgpu').then(()=>main())
+        function main() {
+            const canvasSize = [canvas.height, canvas.width]
+            var initAlive = tf.randomUniform(canvasSize)
+            console.log(initAlive.shape)
+            var alive = tf.greater(initAlive, .5)
+            console.log(alive.shape)
+            function render() {
+                stats.begin()
+                for (var i =0; i < 4; i++) {
+                    alive = golStep(alive)
+                }
+                tf.browser.draw(alive.cast('float32'), canvas)
+                stats.end()
+                requestAnimationFrame(render)
+            }
+            render()
+        }
+    </script>
+</html>

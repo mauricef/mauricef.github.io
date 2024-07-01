@@ -53,7 +53,6 @@ async function loadShaderText() {
     return {
         vs: await fetchText('./glsl/main.vert'),
         gol: await fetchText('./glsl/gol.frag'),
-        zoom: await fetchText('./glsl/zoom.frag'),
         render: await fetchText('./glsl/render.frag')
     }
 }
@@ -61,8 +60,7 @@ async function loadShaderText() {
 function loadContext(canvas, size) {
     const gl = canvas.getContext("webgl2") 
     const canvasClientSize = {width: canvas.clientWidth, height: canvas.clientHeight}
-    const {width, height } = size
-    // const {width, height} = limitSizeMaintainRatio(canvasClientSize, size)
+    const {width, height} = limitSizeMaintainRatio(canvasClientSize, size)
     canvas.width = width
     canvas.height = height 
     gl.viewport(0, 0, width, height)
@@ -73,7 +71,7 @@ function loadContext(canvas, size) {
 
 async function run() {
     const config = {
-        size: {width: 1920, height: 1080}
+        size: {width: 256, height: 256}
     }
 
     const stats = Stats()
@@ -92,7 +90,6 @@ async function run() {
 
 
     const golPg = twgl.createProgramInfo(gl, [shaderText.vs, shaderText.gol])
-    const zoomerPg = twgl.createProgramInfo(gl, [shaderText.vs, shaderText.zoom])
     const renderPg = twgl.createProgramInfo(gl, [shaderText.vs, shaderText.render])
 
     var buffers = [Buffer(gl), Buffer(gl)]
@@ -120,39 +117,17 @@ async function run() {
         x = modulo(x, resolution.width)
         y = modulo(y, resolution.height)
         const pp = zoomer.drawPointer ? [x,y] : [0, 0]
-        for (var i=0; i < 64; i++) {
-            const uniforms = {
-                u_first: first,
-                u_time: time,
-                u_pointer: pp,
-                u_prev: buffers[0],
-                u_seed: Math.random(),
-                u_seeds: [
-                    Math.random(),
-                    Math.random(),
-                    Math.random()
-                ],
-                u_resolution: [width, height],
-            }
-
-            const outputBuffer = buffers[1]
-            executeProgram(gl, golPg, quad, uniforms, outputBuffer)
-            buffers.reverse()
-        }
+        executeProgram(gl, golPg, quad, {
+            u_first: first,
+            u_time: time,
+            u_pointer: pp,
+            u_prev: buffers[0],
+            u_seed: first ? Math.random() : 0,
+            u_resolution: [width, height],
+        }, buffers[1])
         first = false
-        const buffer =  buffers[0]
-        executeProgram(gl, zoomerPg, quad, {
-            u_input: buffer,
-            offset: [
-                zoomer.zoomOffset.x / zoomer.resolution.width,
-                zoomer.zoomOffset.y / zoomer.resolution.height
-            ],
-            scale: [
-                zoomer.resolution.width * zoomer.zoomScale,
-                zoomer.resolution.height * zoomer.zoomScale
-            ],
-        }, zoomerBuffer)
-        executeProgram(gl, renderPg, quad, {u_input: zoomerBuffer})
+        executeProgram(gl, renderPg, quad, {u_input: buffers[1]})
+        buffers.reverse()
     }
     function animationFrame(t) {
         stats.begin()

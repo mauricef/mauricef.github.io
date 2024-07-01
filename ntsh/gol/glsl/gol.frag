@@ -2,7 +2,7 @@
 precision highp float;
 
 in vec2 uv;
-uniform float u_time;
+uniform bool u_first;
 uniform float u_seed;
 uniform vec2 u_resolution;
 uniform sampler2D u_prev;
@@ -30,32 +30,25 @@ float gol(sampler2D state, vec2 uv) {
             sum += readPixel(state, uv, dx, dy).r;
         }
     }
-    if(value == 1.0 && (sum < 2.0 || sum > 3.0)){
-        return 0.0;
+    if(value == 1.0 && sum == 3.0)
+    {
+        return 1.0;
     } 
-    else if(value == 0.0 && sum == 3.0){
+    if(value == 1.0 && sum == 4.0)
+    {
         return 1.0;
     }
-    else {
-        return value;
+    if(value == 0.0 && sum == 3.0){
+        return 1.0;
     }
-}
-
-bool cutout(vec2 xy, vec2 center, float time) {
-    float radius = 100.0 + 5. * sin(time / 1000.);
-    float dist = distance(xy, center);
-    bool ring = dist < radius && dist > radius - 2.;
-    bool line = abs(xy.y - center.y) < 2.;
-    return ring || line;
+    return 0.0;
 }
 
 void main() {
     float p = .5;
     vec2 xy = gl_FragCoord.xy;
-    vec2 center = u_resolution / 2.;
-    bool isCutout = cutout(xy, center, u_time);
     float value = 0.;
-    if (isCutout) {
+    if (u_first) {
         value = random(u_seed, p, xy);
     }
     else {
