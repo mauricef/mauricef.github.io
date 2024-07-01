@@ -80,7 +80,6 @@ const PREFIX = `
     ${defInput('u_input')}
 
     uniform float u_angle, u_alignment;
-    uniform float u_hexGrid;
     
     mat2 rotate(float ang) {
         float s = sin(ang), c = cos(ang);
@@ -99,25 +98,6 @@ const PREFIX = `
         dir = rotate(u_angle) * dir;
         return dir;
     }
-    // https://www.shadertoy.com/view/Xljczw
-    // https://www.shadertoy.com/view/MlXyDl
-    // returns xy - in cell pos, zw - skewed cell id
-    vec4 getHex(vec2 u) {
-        vec2 s = vec2(1., mix(2.0, 1.732, u_hexGrid));
-        vec2 p = vec2(0.5*u_hexGrid, 0.5);
-        vec2 a = mod(u    ,s)*2.-s;
-        vec2 b = mod(u+s*p,s)*2.-s;
-        vec2 ai = floor(u/s);
-        vec2 bi = floor(u/s+p);
-        // skewed coords
-        ai = vec2(ai.x-ai.y*u_hexGrid, ai.y*2.0+1.0);
-        bi = vec2(bi.x-bi.y*u_hexGrid, bi.y*2.0);
-        return dot(a,a)<dot(b,b) ? vec4(a, ai) : vec4(b, bi);    
-    }
-
-    vec2 hex2screen(vec2 u) {
-        return vec2(u.x + u.y/2.0, u.y*1.732/2.0); 
-    }
 `;
 
 const PROGRAMS = {
@@ -132,12 +112,6 @@ const PROGRAMS = {
         vec2 xy = u_pos;
         xy = (xy + u_output.size*(0.5)*(u_zoom-1.0))/u_zoom;
         vec2 xy_out = getOutputXY();
-        if (u_hexGrid > 0.0) {
-            // vec4 r = getHex(u_pos - u_output.size*0.5);
-            // xy = r.zw + u_output.size*0.5;
-            xy_out = hex2screen(xy_out - u_output.size*0.5);
-            xy_out = xy_out + u_output.size*0.5;
-        }
         vec2 diff = abs(xy_out-xy);
         diff = min(diff, u_output.size-diff);
         if (length(diff)*u_zoom>=u_r) 
@@ -149,18 +123,6 @@ const PROGRAMS = {
     const mat3 sobelX = mat3(-1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0)/8.0;
     const mat3 sobelY = mat3(-1.0,-2.0,-1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0)/8.0;
     const mat3 gauss = mat3(1.0, 2.0, 1.0, 2.0, 4.0-16.0, 2.0, 1.0, 2.0, 1.0)/8.0;
-    const mat3 sobelXhex = mat3( 0.0,    -1.0, 1.0, 
-                                       -2.0, 0.0, 2.0, 
-                                         -1.0, 1.0,        0.0)/8.0;
-
-    const mat3 sobelYhex = mat3( 0.0,    -2.0,-2.0, 
-                                        0.0, 0.0, 0.0, 
-                                          2.0, 2.0,        0.0)/8.0;
-
-    const mat3 gaussHex = mat3(0.0,       2.0, 2.0, 
-                                       2.0, 4.0-16.0, 2.0, 
-                                          2.0, 2.0,        0.0)/8.0;
-
     vec4 conv3x3(vec2 xy, float inputCh, mat3 filter) {
         vec4 a = vec4(0.0);
         for (int y=0; y<3; ++y)
@@ -182,13 +144,13 @@ const PROGRAMS = {
         if (filterBand < 0.5) {
             setOutput(u_input_read(xy, inputCh));
         } else if (filterBand < 2.5) {
-            vec4 dx = conv3x3(xy, inputCh, sobelX*(1.0-u_hexGrid) + sobelXhex*u_hexGrid);
-            vec4 dy = conv3x3(xy, inputCh, sobelY*(1.0-u_hexGrid) + sobelYhex*u_hexGrid);
+            vec4 dx = conv3x3(xy, inputCh, sobelX);
+            vec4 dy = conv3x3(xy, inputCh, sobelY);
             vec2 dir = getCellDirection(xy);
             float s = dir.x, c = dir.y;
             setOutput(filterBand < 1.5 ? dx*c-dy*s : dx*s+dy*c);
         } else {
-            setOutput(conv3x3(xy, inputCh, gauss*(1.0-u_hexGrid) + gaussHex*u_hexGrid));
+            setOutput(conv3x3(xy, inputCh, gauss));
         }
     }`,
     dense: `
@@ -327,7 +289,6 @@ export class CA {
         this.perceptionCircle = 0.0;
         this.arrowsCoef = 0.0;
         this.visMode = 'color';
-        this.hexGrid = false;
  
         this.layers = [];
         this.setWeights(models);
@@ -370,7 +331,7 @@ export class CA {
         if (stage == 'all' || stage == 'perception') {
             this.runLayer(self.progs.perception, this.buf.perception, {
                 u_input: this.buf.state, u_angle: this.rotationAngle / 180.0 * Math.PI,
-                u_alignment: this.alignment, u_hexGrid: this.hexGrid
+                u_alignment: this.alignment
             });
         }
         let inputBuf = this.buf.perception;
@@ -393,13 +354,13 @@ export class CA {
 
     paint(x, y, r, brush) {
         this.runLayer(this.progs.paint, this.buf.control, {
-            u_pos: [x, y], u_r: r, u_brush: [brush, 0, 0, 0], u_hexGrid: this.hexGrid, u_zoom: 1.0 
+            u_pos: [x, y], u_r: r, u_brush: [brush, 0, 0, 0], u_zoom: 1.0 
         });
     }
 
     clearCircle(x, y, r, brush, zoom=1.0) {
         self.runLayer(self.progs.paint, this.buf.state, {
-            u_pos: [x, y], u_r: r, u_brush: [0, 0, 0, 0], u_hexGrid: this.hexGrid, u_zoom: zoom
+            u_pos: [x, y], u_r: r, u_brush: [0, 0, 0, 0], u_zoom: zoom
         });
     }
 
@@ -448,7 +409,6 @@ export class CA {
             u_alignment: this.alignment,
             u_perceptionCircle: this.perceptionCircle,
             u_arrows: this.arrowsCoef,
-            u_hexGrid: this.hexGrid,
         };
         let inputBuf = this.buf.state;
         
