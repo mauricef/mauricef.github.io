@@ -79,23 +79,9 @@ const PREFIX = `
 
     ${defInput('u_input')}
 
-    uniform float u_angle, u_alignment;
     
-    mat2 rotate(float ang) {
-        float s = sin(ang), c = cos(ang);
-        return mat2(c, s, -s, c);
-    }
-
     vec2 getCellDirection(vec2 xy) {
         vec2 dir = vec2(0.0, 1.0);
-        if (u_alignment == 1.0) {
-            dir = normalize(xy-0.5*u_input.size);
-        } else if (u_alignment == 2.0) {
-            vec2 v1 = xy-0.25*u_input.size;
-            vec2 v2 = 0.75*u_input.size-xy;
-            dir = normalize(v1/pow(length(v1), 3.0) +  v2/pow(length(v2), 3.0));
-        }
-        dir = rotate(u_angle) * dir;
         return dir;
     }
 `;
@@ -105,16 +91,17 @@ const PROGRAMS = {
     uniform vec2 u_pos;
     uniform float u_r;
     uniform vec4 u_brush;
-    uniform float u_zoom;
+
+    float sigmoid(float x) {
+        return 1.0 / (1.0 + exp(-x));
+    }
 
     void main() {
-
         vec2 xy = u_pos;
-        xy = (xy + u_output.size*(0.5)*(u_zoom-1.0))/u_zoom;
         vec2 xy_out = getOutputXY();
         vec2 diff = abs(xy_out-xy);
         diff = min(diff, u_output.size-diff);
-        if (length(diff)*u_zoom>=u_r) 
+        if (length(diff)>=u_r) 
           discard;
         setOutput(u_brush);
 
@@ -156,7 +143,7 @@ const PROGRAMS = {
     dense: `
     ${defInput('u_control')}
     uniform sampler2D u_weightTex;
-    uniform float u_seed, u_fuzz;
+    uniform float u_seed;
     uniform vec2 u_weightCoefs; // scale, center
     uniform vec2 u_layout;
     
@@ -175,10 +162,9 @@ const PROGRAMS = {
 
       float dy = 1.0/(u_input.depth+1.0)/u_layout.y;
       vec2 p = vec2((ch+0.5)/u_output.depth4, dy*0.5);
-      vec2 fuzz = (hash23(vec3(xy, u_seed+ch))-0.5)*u_fuzz;
 
       vec2 realXY = xy;
-      float modelIdx = u_control_read(realXY+fuzz, 0.0).x+0.5;
+      float modelIdx = u_control_read(realXY, 0.0).x+0.5;
       p.x += floor(mod(modelIdx, u_layout.x));
       p.y += floor(modelIdx/u_layout.x);
       p /= u_layout;
@@ -280,28 +266,14 @@ export class CA {
         self = this;
         this.gl = gl;
         this.gridSize = gridSize || [96, 96];
-
         this.updateProbability = 0.5;
-
-        this.rotationAngle = 0.0;
-        this.alignment = 0;
-        this.fuzz = 8.0;
-        this.perceptionCircle = 0.0;
-        this.arrowsCoef = 0.0;
-        this.visMode = 'color';
- 
         this.layers = [];
         this.setWeights(models);
-
         this.progs = createPrograms(gl);
         this.quad = twgl.createBufferInfoFromArrays(gl, {
             position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
         });
-
         this.setupBuffers();
-        const visNames = Object.getOwnPropertyNames(this.buf);
-        visNames.push('color');
-        this.clearCircle(0, 0, 10000);
     }
 
     setupBuffers() {
@@ -323,44 +295,34 @@ export class CA {
         }
     }
 
-    step(stage) {
-        stage = stage || 'all';
+    step() {
         if (!this.layers.every(l=>l.ready)) 
             return;
             
-        if (stage == 'all' || stage == 'perception') {
-            this.runLayer(self.progs.perception, this.buf.perception, {
-                u_input: this.buf.state, u_angle: this.rotationAngle / 180.0 * Math.PI,
-                u_alignment: this.alignment
-            });
-        }
+        this.runLayer(self.progs.perception, this.buf.perception, {
+            u_input: this.buf.state,
+        });
         let inputBuf = this.buf.perception;
         for (let i=0; i<this.layers.length; ++i) {
-            if (stage == 'all' || stage == `layer${i}`)
-                this.runDense(this.buf[`layer${i}`], inputBuf, this.layers[i]);
+            this.runDense(this.buf[`layer${i}`], inputBuf, this.layers[i]);
             inputBuf = this.buf[`layer${i}`];
         }
-        if (stage == 'all' || stage == 'newState') {
-            this.runLayer(this.progs.update, this.buf.newState, {
-                u_input: this.buf.state, u_update: inputBuf,
-                u_seed: Math.random() * 1000, u_updateProbability: this.updateProbability
-            });
-        }
-
-        if (stage == 'all') {
-            [this.buf.state, this.buf.newState] = [this.buf.newState, this.buf.state];
-        }
+        this.runLayer(this.progs.update, this.buf.newState, {
+            u_input: this.buf.state, u_update: inputBuf,
+            u_seed: Math.random() * 1000, u_updateProbability: this.updateProbability
+        });
+        [this.buf.state, this.buf.newState] = [this.buf.newState, this.buf.state];
     }
 
     paint(x, y, r, brush) {
         this.runLayer(this.progs.paint, this.buf.control, {
-            u_pos: [x, y], u_r: r, u_brush: [brush, 0, 0, 0], u_zoom: 1.0 
+            u_pos: [x, y], u_r: r, u_brush: [brush, 0, 0, 0]
         });
     }
 
-    clearCircle(x, y, r, brush, zoom=1.0) {
+    clearCircle(x, y, r, brush) {
         self.runLayer(self.progs.paint, this.buf.state, {
-            u_pos: [x, y], u_r: r, u_brush: [0, 0, 0, 0], u_zoom: zoom
+            u_pos: [x, y], u_r: r, u_brush: [0, 0, 0, 0]
         });
     }
 
@@ -396,7 +358,7 @@ export class CA {
         return this.runLayer(this.progs.dense, output, {
             u_input: input, u_control: this.buf.control,
             u_weightTex: layer.tex, u_weightCoefs: layer.coefs, u_layout: layer.layout,
-            u_seed: Math.random() * 1000, u_fuzz: this.fuzz
+            u_seed: Math.random() * 1000
         });
     }
 
@@ -404,12 +366,7 @@ export class CA {
         const gl = this.gl;
         gl.useProgram(this.progs.vis.program);
         twgl.setBuffersAndAttributes(gl, this.progs.vis, this.quad);
-        const uniforms = { u_raw: 0.0, u_zoom: 1,
-            u_angle: this.rotationAngle / 180.0 * Math.PI,
-            u_alignment: this.alignment,
-            u_perceptionCircle: this.perceptionCircle,
-            u_arrows: this.arrowsCoef,
-        };
+        const uniforms = {}
         let inputBuf = this.buf.state;
         
         setTensorUniforms(uniforms, 'u_input', inputBuf);

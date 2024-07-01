@@ -31,7 +31,8 @@ async function createDemo() {
   async function reloadDemo() {
     const {w, h} = params.size
     ca = new CA(gl, models, [w, h], gui);
-    ca.paint(0, 0, 10000, params.model, [0.5, 0.5]);
+    ca.paint(0, 0, 10000, params.model);
+    ca.paint(w/2, h/2, w/4, 1)
     canvas.width = w
     canvas.height = h
   }
