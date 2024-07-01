@@ -3,3 +3,4 @@
 - [Instagram](https://instagram.com/mauricef.gg)
 - [LinkedIn](https://www.linkedin.com/in/mauricef-gg/)
 - [Email](mailto:mauricef@gmail.com)
+- [Perf](/ntsh/self-org)
