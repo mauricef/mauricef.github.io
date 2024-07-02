@@ -15,7 +15,7 @@ async function createDemo() {
   const gui = new dat.GUI()
   const params = {
     model: 0,
-    size: {w: 256, h: 256},
+    size: {w: 1920, h: 1080},
     reload: function() { reloadDemo() },
     stepsPerFrame: 4
   }
