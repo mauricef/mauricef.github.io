@@ -32,12 +32,10 @@ async function createDemo() {
     gui.add(params, 'reload')
 
     var ca = null
-
     async function reloadDemo() {
         const {w, h} = params.size
         ca = new CA({gl, models, gridSize:[w, h], 
-            ch:12, 
-            perception_n:48,
+            ch: 12, 
             quantScaleZero: [4, 127/255]
         });
         ca.paint(w/2, h/2, w * params.radius, 1/w)

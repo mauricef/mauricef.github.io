@@ -58,12 +58,12 @@ function setTensorUniforms(uniforms, name, tensor) {
     }
 }
 
-
 class Dense {
-    constructor(gl, idx) {
+    constructor({gl, gridSize}) {
         this.gl = gl
-        this.idx = idx
+        this.gridSize = gridSize
         this.layers = []
+        this.buf = {}
     }
     createDenseInfo(params) {
         const gl = this.gl
@@ -87,69 +87,24 @@ class Dense {
     setWeights(models) {
         this.layers = models.layers.map(layer=>this.createDenseInfo(layer))
     }
+    setupBuffers() {
+        const [gridW, gridH] = this.gridSize;
+        for (let i=0; i<this.layers.length; ++i) {
+            const layer = this.layers[i];
+            this.buf[`layer${i}`] = createTensor(this.gl, gridW, gridH, layer.out_n, layer.quantScaleZero);
+        }
+    }
 }
 
-export class CA {
-    constructor({gl, models, gridSize, ch, perception_n, quantScaleZero}) {
-        self = this
+class Grid {
+    constructor({gl, gridSize}) {
         this.gl = gl
-        this.ch = ch
-        this.quantScaleZero = quantScaleZero
-        this.perception_n = perception_n
-        this.dense = new Dense(gl)
         this.gridSize = gridSize
-        this.updateProbability = 0.5
-        this.dense.setWeights(models)
-        this.progs = createPrograms(gl, PROGRAMS)
         this.quad = twgl.createBufferInfoFromArrays(gl, {
             position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
         })
-        this.setupBuffers()
     }
-
-    setupBuffers() {
-        const gl = this.gl;
-        const [gridW, gridH] = this.gridSize;
-        const channel_n = this.ch
-        const stateQuantization = this.quantScaleZero;
-        this.buf = {
-            mask: createTensor(gl, gridW, gridH, 4, [255.0, 0.0]),
-            state: createTensor(gl, gridW, gridH, channel_n, stateQuantization),
-            newState: createTensor(gl, gridW, gridH, channel_n, stateQuantization),
-            perception: createTensor(gl, gridW, gridH, this.perception_n, stateQuantization),
-        };
-        for (let i=0; i<this.dense.layers.length; ++i) {
-            const layer = this.dense.layers[i];
-            this.buf[`layer${i}`] = createTensor(gl, gridW, gridH, layer.out_n, layer.quantScaleZero);
-        }
-    }
-
-    step() {
-        const layers = this.dense.layers
-        if (!layers.every(l=>l.ready)) 
-            return;
-            
-        this.runLayer(self.progs.perception, this.buf.perception, {
-            u_state: this.buf.state,
-        });
-        let inputBuf = this.buf.perception;
-        for (let i=0; i<layers.length; ++i) {
-            this.runDense(this.buf[`layer${i}`], inputBuf, layers[i]);
-            inputBuf = this.buf[`layer${i}`];
-        }
-        this.runLayer(this.progs.update, this.buf.newState, {
-            u_state: this.buf.state, u_update: inputBuf,
-            u_seed: Math.random() * 1000, u_updateProbability: this.updateProbability
-        });
-        [this.buf.state, this.buf.newState] = [this.buf.newState, this.buf.state];
-    }
-
-    paint(x, y, r, blur) {
-        this.runLayer(this.progs.paint, this.buf.mask, {
-            u_pos: [x, y], u_r: r, u_blur: blur
-        });
-    }
-    runLayer(program, output, inputs) {
+    runProgram(program, inputs, output) {
         const gl = this.gl;
         inputs = inputs || {};
         const uniforms = {};
@@ -161,33 +116,79 @@ export class CA {
                 uniforms[name] = val;
             }
         }
-        setTensorUniforms(uniforms, 'u_output', output);
+        if (output != null) {
+            setTensorUniforms(uniforms, 'u_output', output);
+            twgl.bindFramebufferInfo(gl, output.fbi);
+        }
 
-        twgl.bindFramebufferInfo(gl, output.fbi);
         gl.useProgram(program.program);
         twgl.setBuffersAndAttributes(gl, program, this.quad);
         twgl.setUniforms(program, uniforms);
         twgl.drawBufferInfo(gl, this.quad);
-        return { programName: program.name, output }
+    }
+}
+
+const PERCEPTION_KERNEL_COUNT = 4
+export class CA {
+    constructor({gl, models, gridSize, ch, quantScaleZero}) {
+        self = this
+        this.gl = gl
+        this.grid = new Grid({gl, gridSize})
+        this.ch = ch
+        this.quantScaleZero = quantScaleZero
+        this.dense = new Dense({gl, gridSize})
+        this.gridSize = gridSize
+        this.updateProbability = 0.5
+        this.dense.setWeights(models)
+        this.progs = createPrograms(gl, PROGRAMS)
+        this.setupBuffers()
+        this.dense.setupBuffers()
     }
 
-    runDense(output, input, layer) {
-        return this.runLayer(this.progs.dense, output, {
+    setupBuffers() {
+        const gl = this.gl;
+        const [gridW, gridH] = this.gridSize;
+        const stateQuantization = this.quantScaleZero;
+        this.buf = {
+            mask: createTensor(gl, gridW, gridH, 1, [255.0, 0.0]),
+            state: createTensor(gl, gridW, gridH, this.ch, stateQuantization),
+            newState: createTensor(gl, gridW, gridH, this.ch, stateQuantization),
+            perception: createTensor(gl, gridW, gridH, PERCEPTION_KERNEL_COUNT * this.ch, stateQuantization),
+        }
+    }
+
+    step() {
+        this.grid.runProgram(self.progs.perception, {
+            u_state: this.buf.state,
+        }, this.buf.perception);
+
+        let inputBuf = this.buf.perception;
+        for (let i=0; i<this.dense.layers.length; ++i) {
+            this.runDense(this.dense.layers[i], inputBuf, this.dense.buf[`layer${i}`]);
+            inputBuf = this.dense.buf[`layer${i}`];
+        }
+        this.grid.runProgram(this.progs.update,{
+            u_state: this.buf.state, u_update: inputBuf,
+            u_seed: Math.random() * 1000, u_updateProbability: this.updateProbability
+        }, this.buf.newState);
+        [this.buf.state, this.buf.newState] = [this.buf.newState, this.buf.state];
+    }
+
+    paint(x, y, r, blur) {
+        this.grid.runProgram(this.progs.paint, {
+            u_pos: [x, y], u_r: r, u_blur: blur
+        }, this.buf.mask);
+    }
+    
+    runDense(layer, input, output) {
+        return this.grid.runProgram(this.progs.dense, {
             u_input: input, u_mask: this.buf.mask,
             u_weightTex: layer.tex, u_weightCoefs: layer.coefs, u_layout: layer.layout,
             u_seed: Math.random() * 1000
-        });
+        }, output);
     }
 
     draw() {
-        const gl = this.gl;
-        gl.useProgram(this.progs.vis.program);
-        twgl.setBuffersAndAttributes(gl, this.progs.vis, this.quad);
-        const uniforms = {}
-        let inputBuf = this.buf.state;
-        
-        setTensorUniforms(uniforms, 'u_state', inputBuf);
-        twgl.setUniforms(this.progs.vis, uniforms);
-        twgl.drawBufferInfo(gl, this.quad);
+        this.grid.runProgram(this.progs.vis, {u_state: this.buf.state})
     }
 }
