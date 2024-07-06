@@ -58,33 +58,48 @@ function setTensorUniforms(uniforms, name, tensor) {
     }
 }
 
-function createDenseInfo(gl, params) {
-    const coefs = [params.scale, 127.0 / 255.0];
-    const [in_n, out_n] = params.shape;
-    const info = { 
-        coefs, 
-        layout: params.layout, 
-        in_n: in_n - 1, 
-        out_n,
-        quantScaleZero: params.quant_scale_zero, 
-        ready: false 
+
+class Dense {
+    constructor(gl, idx) {
+        this.gl = gl
+        this.idx = idx
+        this.layers = []
     }
-    info.tex = twgl.createTexture(gl, {
-        minMag: gl.NEAREST, src: params.data, flipY: false, premultiplyAlpha: false,
-    }, ()=>{
-        info.ready = true;
-    });
-    return info;
+    createDenseInfo(params) {
+        const gl = this.gl
+        const coefs = [params.scale, 127.0 / 255.0];
+        const [in_n, out_n] = params.shape;
+        const info = { 
+            coefs, 
+            layout: params.layout, 
+            in_n: in_n - 1, 
+            out_n,
+            quantScaleZero: params.quant_scale_zero, 
+            ready: false 
+        }
+        info.tex = twgl.createTexture(gl, {
+            minMag: gl.NEAREST, src: params.data, flipY: false, premultiplyAlpha: false,
+        }, ()=>{
+            info.ready = true;
+        });
+        return info;
+    }
+    setWeights(models) {
+        this.layers = models.layers.map(layer=>this.createDenseInfo(layer))
+    }
 }
 
 export class CA {
-    constructor(gl, models, gridSize, gui) {
+    constructor({gl, models, gridSize, ch, perception_n, quantScaleZero}) {
         self = this
         this.gl = gl
+        this.ch = ch
+        this.quantScaleZero = quantScaleZero
+        this.perception_n = perception_n
+        this.dense = new Dense(gl)
         this.gridSize = gridSize
         this.updateProbability = 0.5
-        this.layers = []
-        this.setWeights(models)
+        this.dense.setWeights(models)
         this.progs = createPrograms(gl, PROGRAMS)
         this.quad = twgl.createBufferInfoFromArrays(gl, {
             position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0],
@@ -95,32 +110,31 @@ export class CA {
     setupBuffers() {
         const gl = this.gl;
         const [gridW, gridH] = this.gridSize;
-        const perception_n = this.layers[0].in_n;
-        const lastLayer = this.layers[this.layers.length-1];
-        const channel_n = lastLayer.out_n;
-        const stateQuantization = lastLayer.quantScaleZero;
+        const channel_n = this.ch
+        const stateQuantization = this.quantScaleZero;
         this.buf = {
-            control: createTensor(gl, gridW, gridH, 4, [255.0, 0.0]),
+            mask: createTensor(gl, gridW, gridH, 4, [255.0, 0.0]),
             state: createTensor(gl, gridW, gridH, channel_n, stateQuantization),
             newState: createTensor(gl, gridW, gridH, channel_n, stateQuantization),
-            perception: createTensor(gl, gridW, gridH, perception_n, stateQuantization),
+            perception: createTensor(gl, gridW, gridH, this.perception_n, stateQuantization),
         };
-        for (let i=0; i<this.layers.length; ++i) {
-            const layer = this.layers[i];
+        for (let i=0; i<this.dense.layers.length; ++i) {
+            const layer = this.dense.layers[i];
             this.buf[`layer${i}`] = createTensor(gl, gridW, gridH, layer.out_n, layer.quantScaleZero);
         }
     }
 
     step() {
-        if (!this.layers.every(l=>l.ready)) 
+        const layers = this.dense.layers
+        if (!layers.every(l=>l.ready)) 
             return;
             
         this.runLayer(self.progs.perception, this.buf.perception, {
             u_state: this.buf.state,
         });
         let inputBuf = this.buf.perception;
-        for (let i=0; i<this.layers.length; ++i) {
-            this.runDense(this.buf[`layer${i}`], inputBuf, this.layers[i]);
+        for (let i=0; i<layers.length; ++i) {
+            this.runDense(this.buf[`layer${i}`], inputBuf, layers[i]);
             inputBuf = this.buf[`layer${i}`];
         }
         this.runLayer(this.progs.update, this.buf.newState, {
@@ -130,17 +144,11 @@ export class CA {
         [this.buf.state, this.buf.newState] = [this.buf.newState, this.buf.state];
     }
 
-    paint(x, y, r, brush) {
-        this.runLayer(this.progs.paint, this.buf.control, {
-            u_pos: [x, y], u_r: r, u_brush: [brush, 0, 0, 0]
+    paint(x, y, r, blur) {
+        this.runLayer(this.progs.paint, this.buf.mask, {
+            u_pos: [x, y], u_r: r, u_blur: blur
         });
     }
-
-    setWeights(models) {
-        const gl = this.gl;
-        this.layers = models.layers.map(layer=>createDenseInfo(gl, layer));
-    }
-
     runLayer(program, output, inputs) {
         const gl = this.gl;
         inputs = inputs || {};
@@ -165,7 +173,7 @@ export class CA {
 
     runDense(output, input, layer) {
         return this.runLayer(this.progs.dense, output, {
-            u_input: input, u_control: this.buf.control,
+            u_input: input, u_mask: this.buf.mask,
             u_weightTex: layer.tex, u_weightCoefs: layer.coefs, u_layout: layer.layout,
             u_seed: Math.random() * 1000
         });

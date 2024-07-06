@@ -3,7 +3,7 @@ import { defInput , PREFIX} from "./shared.js"
 export const DENSE = /*glsl*/`#version 300 es
 ${PREFIX}
 ${defInput('u_input')}
-${defInput('u_control')}
+${defInput('u_mask')}
 uniform sampler2D u_weightTex;
 uniform float u_seed;
 uniform vec2 u_weightCoefs; // scale, center
@@ -16,17 +16,16 @@ vec4 readWeightUnscaled(vec2 p) {
     return w - u_weightCoefs.y;
 }
 
-void main() {
+vec4 computeResultForModel(int idx) {
+    float modelIdx = float(idx) + .5;
+
     vec2 xy = getOutputXY();
     float ch = getOutputChannel();
-    if (ch >= u_output.depth4)
-        return;
 
     float dy = 1.0/(u_input.depth+1.0)/u_layout.y;
     vec2 p = vec2((ch+0.5)/u_output.depth4, dy*0.5);
 
     vec2 realXY = xy;
-    float modelIdx = u_control_read(realXY, 0.0).x+0.5;
     p.x += floor(mod(modelIdx, u_layout.x));
     p.y += floor(modelIdx/u_layout.x);
     p /= u_layout;
@@ -42,5 +41,15 @@ void main() {
         }
     }
     result += readWeightUnscaled(p);  // bias
-    setOutput(result*u_weightCoefs.x);
+    return result;
+}
+
+void main() {
+    vec2 xy = getOutputXY();
+    vec2 realXY = xy;
+    float mask = u_mask_read(realXY, 0.0).x;
+    vec4 r0 = computeResultForModel(0);
+    vec4 r1 = computeResultForModel(1);
+    vec4 result = r0 + (r1 - r0) * mask;
+    setOutput(result * u_weightCoefs.x);
 }`

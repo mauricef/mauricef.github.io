@@ -17,6 +17,8 @@ async function createDemo() {
         bg_model: 2,
         center_model: 1,
         size: {w: 256, h: 256},
+        radius: .25,
+        blur: 1,
         reload: function() { reloadDemo() },
         stepsPerFrame: 1
     }
@@ -26,15 +28,19 @@ async function createDemo() {
     gui.add(params, 'stepsPerFrame')
     gui.add(params.size, 'w')
     gui.add(params.size, 'h')
+    gui.add(params, 'radius').min(0).max(.5)
     gui.add(params, 'reload')
 
     var ca = null
 
     async function reloadDemo() {
         const {w, h} = params.size
-        ca = new CA(gl, models, [w, h], gui);
-        ca.paint(0, 0, 10000, params.bg_model);
-        ca.paint(w/2, h/2, w/4, params.center_model)
+        ca = new CA({gl, models, gridSize:[w, h], 
+            ch:12, 
+            perception_n:48,
+            quantScaleZero: [4, 127/255]
+        });
+        ca.paint(w/2, h/2, w * params.radius, 1/w)
         canvas.width = w
         canvas.height = h
     }

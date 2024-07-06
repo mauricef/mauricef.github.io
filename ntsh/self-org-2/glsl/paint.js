@@ -5,7 +5,7 @@ export const PAINT = /*glsl*/`#version 300 es
 ${PREFIX}
 uniform vec2 u_pos;
 uniform float u_r;
-uniform vec4 u_brush;
+uniform float u_blur;
 
 float sigmoid(float x) {
     return 1.0 / (1.0 + exp(-x));
@@ -14,10 +14,7 @@ float sigmoid(float x) {
 void main() {
     vec2 xy = u_pos;
     vec2 xy_out = getOutputXY();
-    vec2 diff = abs(xy_out-xy);
-    diff = min(diff, u_output.size-diff);
-    if (length(diff)>=u_r) 
-    discard;
-    setOutput(u_brush);
-
+    float diff = u_r - distance(xy_out, xy);
+    float sdf = sigmoid(u_blur * diff);
+    setOutput(vec4(sdf));
 }`
