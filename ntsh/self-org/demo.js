@@ -15,9 +15,9 @@ async function createDemo() {
   const gui = new dat.GUI()
   const params = {
     model: 0,
-    size: {w: 1920, h: 1080},
+    size: {w: 256, h: 256},
     reload: function() { reloadDemo() },
-    stepsPerFrame: 4
+    stepsPerFrame: 1
   }
   const name2idx = Object.fromEntries(models.model_names.map((s, i) => [s, i]));
   gui.add(params, 'model').options(name2idx)
