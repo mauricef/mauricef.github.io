@@ -12,8 +12,10 @@ struct Tensor {
 };
 uniform Tensor u_output;
 
+out vec4 output_value;
+
 vec4 _readUV(Tensor tensor, sampler2D tex, vec2 uv) {
-    vec4 v = texture2D(tex, uv);
+    vec4 v = texture(tex, uv);
     vec2 p = tensor.packScaleZero;
     v = (v-p.y)*p.x;
     return v;
@@ -43,7 +45,7 @@ float getOutputChannel() {
 void setOutput(vec4 v) {
     vec2 p = u_output.packScaleZero;
     v = v/p.x + p.y;
-    gl_FragColor = v;
+    output_value = v;
 }`
 
 export function defInput(name) {

@@ -1,6 +1,6 @@
 import { defInput , PREFIX} from "./shared.js"
 
-export const DENSE = /*glsl*/`
+export const DENSE = /*glsl*/`#version 300 es
 ${PREFIX}
 ${defInput('u_input')}
 ${defInput('u_control')}
@@ -12,7 +12,7 @@ uniform vec2 u_layout;
 const float MAX_PACKED_DEPTH = 32.0;
 
 vec4 readWeightUnscaled(vec2 p) {
-    vec4 w = texture2D(u_weightTex, p);
+    vec4 w = texture(u_weightTex, p);
     return w - u_weightCoefs.y;
 }
 

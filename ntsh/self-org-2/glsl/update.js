@@ -1,6 +1,6 @@
 import { defInput, PREFIX } from "./shared.js"
 
-export const UPDATE = /*glsl*/`
+export const UPDATE = /*glsl*/`#version 300 es
 
 ${PREFIX}
 ${defInput('u_state')}
@@ -8,7 +8,7 @@ ${defInput('u_update')}
 uniform float u_seed;
 uniform float u_updateProbability;
 
-varying vec2 uv;
+in vec2 uv;
 
 // "Hash without Sine" by David Hoskins (https://www.shadertoy.com/view/4djSRW)
 float hash13(vec3 p3) {

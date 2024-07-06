@@ -4,10 +4,10 @@ import { DENSE } from './glsl/dense.js';
 import { UPDATE } from './glsl/update.js';
 import { VIS } from './glsl/vis.js'
 
-const vs_code = /*glsl*/`
+const vs_code = /*glsl*/`#version 300 es
 
-attribute vec4 position;
-varying vec2 uv;
+in vec4 position;
+out vec2 uv;
 void main() {
     uv = position.xy*0.5 + 0.5;
     gl_Position = position;

@@ -1,6 +1,6 @@
 import { PREFIX} from "./shared.js"
 
-export const PAINT = /*glsl*/`  
+export const PAINT = /*glsl*/`#version 300 es 
 
 ${PREFIX}
 uniform vec2 u_pos;
